@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой RSS Архив (Inoreader)</title>
+    <title>DPGL NEWS</title>
     <style>
         :root {
             --primary-color: #007bff;
@@ -58,7 +58,9 @@
         <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
         <li><button class="tab-btn" onclick="openTab(event, 'tag2')">Ukraine</button></li>
         <!-- Чтобы добавить ТРЕТЬЮ вкладку, раскомментируйте строку ниже: -->
-        <!-- <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Тег 3 (Название)</button></li> -->
+        <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Syria</button></li>
+        <li><button class="tab-btn" onclick="openTab(event, 'tag4')">Erdogan</button></li>
+        <li><button class="tab-btn" onclick="openTab(event, 'tag5')">Fidan</button></li>
     </ul>
 
     <!-- ШАГ Б: Контент вкладок (Сюда вставляются iframe) -->
@@ -71,7 +73,23 @@
         <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
         <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
     </div>
+    
+    <div id="tag3" class="tab-content">
+        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
+        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+    </div>
 
+    <div id="tag4" class="tab-content">
+        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
+        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/01_Erdogan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+    </div>
+    
+    <div id="tag5" class="tab-content">
+        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
+        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/02_Fidan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+    </div>
+    
+    
     <!-- Чтобы добавить контент для ТРЕТЬЕЙ вкладки, раскомментируйте блок ниже: -->
     <!-- 
     <div id="tag3" class="tab-content">
