@@ -1,1 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой RSS Архив (Inoreader)</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #dee2e6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0; padding: 20px;
+            background-color: var(--bg-color); color: var(--text-color);
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; font-size: 24px; }
+        
+        /* Стили навигации вкладок */
+        .tabs-nav {
+            display: flex; flex-wrap: wrap;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px; padding: 0; list-style: none;
+        }
+        .tab-btn {
+            padding: 10px 20px; cursor: pointer; background: none;
+            border: none; font-size: 16px; font-weight: 500; color: #6c757d;
+            border-bottom: 2px solid transparent; margin-bottom: -2px;
+            transition: all 0.2s ease;
+        }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: bold;
+        }
+        
+        /* Стили контента вкладок */
+        .tab-content {
+            display: none; background: #fff;
+            border: 1px solid var(--border-color); border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden;
+        }
+        .tab-content.active { display: block; }
+        iframe { width: 100%; height: 750px; border: none; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Публичные ленты Inoreader</h1>
+
+    <!-- ШАГ А: Навигация (Сюда добавляются новые кнопки) -->
+    <ul class="tabs-nav">
+        <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Тег 1 (Название)</button></li>
+        <li><button class="tab-btn" onclick="openTab(event, 'tag2')">Тег 2 (Название)</button></li>
+        <!-- Чтобы добавить ТРЕТЬЮ вкладку, раскомментируйте строку ниже: -->
+        <!-- <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Тег 3 (Название)</button></li> -->
+    </ul>
+
+    <!-- ШАГ Б: Контент вкладок (Сюда вставляются iframe) -->
+    <div id="tag1" class="tab-content active">
+        <!-- Вставьте вашу первую ссылку HTML Clip в параметр src -->
+        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+        <iframe src="ВСТАВЬТЕ_HTML_CLIP_ССЫЛКУ_1_ИЗ_INOREADER"></iframe>
+    </div>
+
+    <div id="tag2" class="tab-content">
+        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
+        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+        <iframe src="ВСТАВЬТЕ_HTML_CLIP_ССЫЛКУ_2_ИЗ_INOREADER"></iframe>
+    </div>
+
+    <!-- Чтобы добавить контент для ТРЕТЬЕЙ вкладки, раскомментируйте блок ниже: -->
+    <!-- 
+    <div id="tag3" class="tab-content">
+        <iframe src="ВСТАВЬТЕ_HTML_CLIP_ССЫЛКУ_3_ИЗ_INOREADER"></iframe>
+    </div> 
+    -->
+</div>
+
+<script>
+function openTab(evt, tabId) {
+    const tabContents = document.getElementsByClassName("tab-content");
+    for (let i = 0; i < tabContents.length; i++) {
+        tabContents[i].classList.remove("active");
+    }
+    const tabButtons = document.getElementsByClassName("tab-btn");
+    for (let i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove("active");
+    }
+    document.getElementById(tabId).classList.add("active");
+    evt.currentTarget.classList.add("active");
+}
+</script>
+
+</body>
+</html>
 
