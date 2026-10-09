@@ -17,8 +17,36 @@
             background-color: var(--bg-color); color: var(--text-color);
         }
         .container { max-width: 1200px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 30px; font-size: 24px; }
         
+        .header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 { margin: 0; font-size: 24px; }
+        
+        /* Стили таймера обновления */
+        .timer-box {
+            background-color: #e9ecef;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .timer-countdown {
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
         /* Стили навигации вкладок */
         .tabs-nav {
             display: flex; flex-wrap: wrap;
@@ -52,7 +80,11 @@
 
 <div class="container">
     <h1>DPGL NEWS Inoreader</h1>
-
+    <!-- Блок таймера обратного отсчета -->
+        <div class="timer-box">
+            <span>Обновление через:</span>
+            <span id="countdown" class="timer-countdown">30:00</span>
+        </div>
     <!-- ШАГ А: Навигация (Сюда добавляются новые кнопки) -->
     <ul class="tabs-nav">
         <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
@@ -109,22 +141,55 @@
     </div> 
     -->
 </div>
-
 <script>
-function openTab(evt, tabId) {
-    const tabContents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < tabContents.length; i++) {
-        tabContents[i].classList.remove("active");
+    // Настройка времени таймера в секундах (30 минут = 1800 секунд)
+    const REFRESH_INTERVAL = 30 * 60; 
+    let timeLeft = REFRESH_INTERVAL;
+    
+    function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+    
+        // Форматируем вывод (добавляем нули, если число меньше 10)
+        const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+        const displaySeconds = seconds < 10 ? '0' + seconds : seconds;
+    
+        document.getElementById('countdown').textContent = `${displayMinutes}:${displaySeconds}`;
+    
+        if (timeLeft <= 0) {
+            // Время вышло: перезагружаем контент во всех iframe
+            refreshAllIframes();
+            // Сбрасываем таймер заново
+            timeLeft = REFRESH_INTERVAL;
+        } else {
+            timeLeft--;
+        }
     }
-    const tabButtons = document.getElementsByClassName("tab-btn");
-    for (let i = 0; i < tabButtons.length; i++) {
-        tabButtons[i].classList.remove("active");
+    
+    function refreshAllIframes() {
+        const iframes = document.getElementsByTagName('iframe');
+        for (let i = 0; i < iframes.length; i++) {
+            // Перезагрузка src без мерцания и перезагрузки основной страницы
+            iframes[i].src = iframes[i].src;
+        }
     }
-    document.getElementById(tabId).classList.add("active");
-    evt.currentTarget.classList.add("active");
-}
+    
+    function openTab(evt, tabId) {
+        const tabContents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove("active");
+        }
+        const tabButtons = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove("active");
+        }
+        document.getElementById(tabId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+    
+    // Запуск таймера каждую секунду после загрузки страницы
+    setInterval(updateTimer, 1000);
 </script>
-
 </body>
 </html>
 
