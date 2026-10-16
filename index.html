@@ -7,6 +7,7 @@
     <style>
         :root {
             --primary-color: #007bff;
+            --tg-color: #24A1DE;
             --bg-color: #f8f9fa;
             --text-color: #333;
             --border-color: #dee2e6;
@@ -16,19 +17,52 @@
             margin: 0; padding: 20px;
             background-color: var(--bg-color); color: var(--text-color);
         }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         
+        /* Стили плашки Telegram */
+        .tg-banner {
+            background: linear-gradient(135deg, #24A1DE, #1d82b2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 4px 6px rgba(36, 161, 222, 0.15);
+        }
+        .tg-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .tg-btn {
+            background-color: white;
+            color: var(--tg-color);
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tg-btn:hover {
+            background-color: #f1f1f1;
+            transform: translateY(-1px);
+        }
+
+        /* Шапка с таймером */
         .header-area {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 15px;
+            margin-bottom: 25px;
         }
-        h1 { margin: 0; font-size: 24px; }
+        h1 { margin: 0; font-size: 26px; color: #212529; }
         
-        /* Стили таймера обновления */
         .timer-box {
             background-color: #e9ecef;
             padding: 8px 15px;
@@ -36,111 +70,168 @@
             font-size: 14px;
             font-weight: 500;
             color: #495057;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         .timer-countdown {
             font-family: monospace;
             font-size: 16px;
             font-weight: bold;
             color: var(--primary-color);
+            margin-left: 5px;
         }
 
-        /* Стили навигации вкладок */
+        /* Двухколоночный макет: Контент слева, Вкладки справа */
+        .main-layout {
+            display: flex;
+            gap: 25px;
+            align-items: flex-start;
+        }
+        
+        .content-area {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar-area {
+            width: 250px;
+            flex-shrink: 0;
+        }
+
+        /* Вертикальные вкладки справа */
         .tabs-nav {
-            display: flex; flex-wrap: wrap;
-            border-bottom: 2px solid var(--border-color);
-            margin-bottom: 20px; padding: 0; list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0;
+            margin: 0;
+            list-style: none;
         }
         .tab-btn {
-            padding: 10px 20px; cursor: pointer; background: none;
-            border: none; font-size: 16px; font-weight: 500; color: #6c757d;
-            border-bottom: 2px solid transparent; margin-bottom: -2px;
+            width: 100%;
+            text-align: left;
+            padding: 12px 18px;
+            cursor: pointer;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #495057;
             transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
-        .tab-btn:hover { color: var(--primary-color); }
-        .tab-btn.active {
+        .tab-btn:hover {
             color: var(--primary-color);
-            border-bottom: 2px solid var(--primary-color);
+            background-color: #f1f3f5;
+            border-color: #ced4da;
+        }
+        .tab-btn.active {
+            color: #fff;
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
             font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
         }
         
         /* Стили контента вкладок */
         .tab-content {
-            display: none; background: #fff;
-            border: 1px solid var(--border-color); border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden;
+            display: none;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            overflow: hidden;
         }
         .tab-content.active { display: block; }
-        iframe { width: 100%; height: 750px; border: none; display: block; }
+        iframe { width: 100%; height: 800px; border: none; display: block; }
+
+        /* Адаптивность для мобильных экранов */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column-reverse;
+            }
+            .sidebar-area {
+                width: 100%;
+            }
+            .tabs-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .tab-btn {
+                width: auto;
+                flex: 1 1 auto;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>DPGL NEWS Inoreader</h1>
-    <!-- Блок таймера обратного отсчета -->
+    <!-- Блок Telegram в самом верху страницы -->
+    <div class="tg-banner">
+        <div class="tg-text">📢 Читайте аналитику там, где удобно! Подпишитесь на наш Telegram-канал, чтобы получать ежедневный обзор главных новостей.</div>
+        <a href="https://t.me" target="_blank" class="tg-btn">Подписаться на канал</a>
+    </div>
+
+    <!-- Шапка сайта -->
+    <div class="header-area">
+        <h1>DPGL NEWS Inoreader</h1>
         <div class="timer-box">
             <span>Обновление через:</span>
             <span id="countdown" class="timer-countdown">30:00</span>
         </div>
-    <!-- ШАГ А: Навигация (Сюда добавляются новые кнопки) -->
-    <ul class="tabs-nav">
-        <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
-        <li><button class="tab-btn" onclick="openTab(event, 'tag2')">Erdogan</button></li>
-        <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Fidan</button></li>
-        <li><button class="tab-btn" onclick="openTab(event, 'tag4')">Ukraine</button></li>
-        <!-- Чтобы добавить ТРЕТЬЮ вкладку, раскомментируйте строку ниже: -->
-        <li><button class="tab-btn" onclick="openTab(event, 'tag5')">Syria</button></li>
-        <li><button class="tab-btn" onclick="openTab(event, 'tag6')">IRAN</button></li>
-        <li><button class="tab-btn" onclick="openTab(event, 'tag7')">All published</button></li>
-    </ul>
+    </div>
 
-    <!-- ШАГ Б: Контент вкладок (Сюда вставляются iframe) -->
-    <div id="tag1" class="tab-content active">
-        <!-- Вставьте вашу первую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+    <!-- Основной контейнер с двухколоночной сеткой -->
+    <div class="main-layout">
+        
+        <!-- КОЛОНКА СЛЕВА: Контент (iframe) -->
+        <div class="content-area">
+            <div id="tag1" class="tab-content active">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag2" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag3" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag4" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag5" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag6" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+            
+            <div id="tag7" class="tab-content">
+                <iframe src="https://inoreader.com" tabindex="-1"></iframe>
+            </div>
+        </div>
+
+        <!-- КОЛОНКА СПРАВА: Панель навигации по вкладкам -->
+        <div class="sidebar-area">
+            <ul class="tabs-nav">
+                <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag2')">Erdogan</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Fidan</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag4')">Ukraine</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag5')">Syria</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag6')">IRAN</button></li>
+                <li><button class="tab-btn" onclick="openTab(event, 'tag7')">All published</button></li>
+            </ul>
+        </div>
+
     </div>
-    
-    <div id="tag2" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/01_Erdogan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    <div id="tag3" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/02_Fidan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    <div id="tag4" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    <div id="tag5" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    <div id="tag6" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Iran/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    <div id="tag7" class="tab-content">
-        <!-- Вставьте вашу вторую ссылку HTML Clip в параметр src -->
-        <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/00Publish/view/html?cs=m&n=100" frameborder="0" tabindex="-1"></iframe>
-    </div>
-    
-    
-    <!-- Чтобы добавить контент для ТРЕТЬЕЙ вкладки, раскомментируйте блок ниже: -->
-    <!-- 
-    <div id="tag3" class="tab-content">
-        <iframe src="ВСТАВЬТЕ_HTML_CLIP_ССЫЛКУ_3_ИЗ_INOREADER"></iframe>
-    </div> 
-    -->
 </div>
+
 <script>
     // Настройка времени таймера в секундах (30 минут = 1800 секунд)
     const REFRESH_INTERVAL = 30 * 60; 
@@ -150,27 +241,31 @@
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
     
-        // Форматируем вывод (добавляем нули, если число меньше 10)
         const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
         const displaySeconds = seconds < 10 ? '0' + seconds : seconds;
     
         document.getElementById('countdown').textContent = `${displayMinutes}:${displaySeconds}`;
     
         if (timeLeft <= 0) {
-            // Время вышло: перезагружаем контент во всех iframe
             refreshAllIframes();
-            // Сбрасываем таймер заново
             timeLeft = REFRESH_INTERVAL;
         } else {
             timeLeft--;
         }
     }
     
+    // Принудительное обновление iframe с обходом кэша браузера
     function refreshAllIframes() {
         const iframes = document.getElementsByTagName('iframe');
         for (let i = 0; i < iframes.length; i++) {
-            // Перезагрузка src без мерцания и перезагрузки основной страницы
-            iframes[i].src = iframes[i].src;
+            try {
+                let url = new URL(iframes[i].src);
+                url.searchParams.set('t', Date.now());
+                iframes[i].src = url.toString();
+            } catch (e) {
+                const cleanSrc = iframes[i].src.replace(/[&?]t=\d+/, '');
+                iframes[i].src = cleanSrc + (cleanSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
+            }
         }
     }
     
@@ -187,9 +282,9 @@
         evt.currentTarget.classList.add("active");
     }
     
-    // Запуск таймера каждую секунду после загрузки страницы
     setInterval(updateTimer, 1000);
 </script>
 </body>
 </html>
+
 
