@@ -19,7 +19,6 @@
         }
         .container { max-width: 1400px; margin: 0 auto; }
         
-        /* Стили плашки Telegram */
         .tg-banner {
             background: linear-gradient(135deg, #24A1DE, #1d82b2);
             color: white;
@@ -33,10 +32,7 @@
             gap: 15px;
             box-shadow: 0 4px 6px rgba(36, 161, 222, 0.15);
         }
-        .tg-text {
-            font-size: 16px;
-            font-weight: 500;
-        }
+        .tg-text { font-size: 16px; font-weight: 500; }
         .tg-btn {
             background-color: white;
             color: var(--tg-color);
@@ -49,12 +45,8 @@
             display: inline-flex;
             align-items: center;
         }
-        .tg-btn:hover {
-            background-color: #f1f1f1;
-            transform: translateY(-1px);
-        }
-
-        /* Шапка с таймером */
+        .tg-btn:hover { background-color: #f1f1f1; transform: translateY(-1px); }
+        
         .header-area {
             display: flex;
             justify-content: space-between;
@@ -78,25 +70,15 @@
             color: var(--primary-color);
             margin-left: 5px;
         }
-
-        /* Двухколоночный макет: Контент слева, Вкладки справа */
+        
         .main-layout {
             display: flex;
             gap: 25px;
             align-items: flex-start;
         }
+        .content-area { flex: 1; min-width: 0; }
+        .sidebar-area { width: 250px; flex-shrink: 0; }
         
-        .content-area {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .sidebar-area {
-            width: 250px;
-            flex-shrink: 0;
-        }
-
-        /* Вертикальные вкладки справа */
         .tabs-nav {
             display: flex;
             flex-direction: column;
@@ -132,7 +114,6 @@
             box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
         }
         
-        /* Стили контента вкладок */
         .tab-content {
             display: none;
             background: #fff;
@@ -143,37 +124,22 @@
         }
         .tab-content.active { display: block; }
         iframe { width: 100%; height: 800px; border: none; display: block; }
-
-        /* Адаптивность для мобильных экранов */
+        
         @media (max-width: 768px) {
-            .main-layout {
-                flex-direction: column-reverse;
-            }
-            .sidebar-area {
-                width: 100%;
-            }
-            .tabs-nav {
-                flex-direction: row;
-                flex-wrap: wrap;
-            }
-            .tab-btn {
-                width: auto;
-                flex: 1 1 auto;
-                text-align: center;
-            }
+            .main-layout { flex-direction: column-reverse; }
+            .sidebar-area { width: 100%; }
+            .tabs-nav { flex-direction: row; flex-wrap: wrap; }
+            .tab-btn { width: auto; flex: 1 1 auto; text-align: center; }
         }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <!-- Блок Telegram в самом верху страницы -->
     <div class="tg-banner">
         <div class="tg-text">📢 Читайте аналитику там, где удобно! Подпишитесь на наш Telegram-канал, чтобы получать ежедневный обзор главных новостей.</div>
-        <a href="https://t.me/dpgl_news" target="/dpgl_news" class="tg-btn">Подписаться на канал</a>
+        <a href="https://t.me/dpgl_news" target="_blank" rel="noopener noreferrer" class="tg-btn">Подписаться на канал</a>
     </div>
 
-    <!-- Шапка сайта -->
     <div class="header-area">
         <h1>DPGL NEWS Inoreader</h1>
         <div class="timer-box">
@@ -182,34 +148,31 @@
         </div>
     </div>
 
-    <!-- Основной контейнер с двухколоночной сеткой -->
     <div class="main-layout">
-        
-        <!-- КОЛОНКА СЛЕВА: Контент (iframe) -->
         <div class="content-area">
             <div id="tag1" class="tab-content active">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m" title="Turkiye"></iframe>
             </div>
             <div id="tag2" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/01_Erdogan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/01_Erdogan/view/html?cs=m" title="Erdogan"></iframe>
             </div>
             <div id="tag3" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/02_Fidan/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/02_Fidan/view/html?cs=m" title="Fidan"></iframe>
             </div>
             <div id="tag4" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m" title="Ukraine"></iframe>
             </div>
             <div id="tag5" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m" title="Syria"></iframe>
             </div>
             <div id="tag6" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/Iran/view/html?cs=m" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Iran/view/html?cs=m" title="Iran"></iframe>
             </div>
             <div id="tag7" class="tab-content">
-                <iframe width="670" height="800" src="https://www.inoreader.com/stream/user/1003999326/tag/00Publish/view/html?cs=m&n=100" frameborder="0" tabindex="-1"></iframe>
+                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/00Publish/view/html?cs=m&n=100" title="All published"></iframe>
             </div>
         </div>
-        <!-- КОЛОНКА СПРАВА: Панель навигации по вкладкам -->
+
         <div class="sidebar-area">
             <ul class="tabs-nav">
                 <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
@@ -221,24 +184,26 @@
                 <li><button class="tab-btn" onclick="openTab(event, 'tag7')">All published</button></li>
             </ul>
         </div>
-
     </div>
 </div>
 
 <script>
-    // Настройка времени таймера в секундах (30 минут = 1800 секунд)
-    const REFRESH_INTERVAL = 30 * 60; 
+    const REFRESH_INTERVAL = 30 * 60;
     let timeLeft = REFRESH_INTERVAL;
-    
+
+    function loadIframe(iframe) {
+        if (!iframe.src && iframe.dataset.src) {
+            iframe.src = iframe.dataset.src;
+        }
+    }
+
     function updateTimer() {
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-    
         const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
         const displaySeconds = seconds < 10 ? '0' + seconds : seconds;
-    
         document.getElementById('countdown').textContent = `${displayMinutes}:${displaySeconds}`;
-    
+
         if (timeLeft <= 0) {
             refreshAllIframes();
             timeLeft = REFRESH_INTERVAL;
@@ -246,38 +211,37 @@
             timeLeft--;
         }
     }
-    
-    // Принудительное обновление iframe с обходом кэша браузера
+
     function refreshAllIframes() {
-        const iframes = document.getElementsByTagName('iframe');
-        for (let i = 0; i < iframes.length; i++) {
+        const iframes = document.querySelectorAll('iframe[src]');
+        iframes.forEach(iframe => {
             try {
-                let url = new URL(iframes[i].src);
+                const url = new URL(iframe.src);
                 url.searchParams.set('t', Date.now());
-                iframes[i].src = url.toString();
+                iframe.src = url.toString();
             } catch (e) {
-                const cleanSrc = iframes[i].src.replace(/[&?]t=\d+/, '');
-                iframes[i].src = cleanSrc + (cleanSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
+                const cleanSrc = iframe.src.replace(/[&?]t=\d+/, '');
+                iframe.src = cleanSrc + (cleanSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
             }
-        }
+        });
     }
-    
+
     function openTab(evt, tabId) {
-        const tabContents = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < tabContents.length; i++) {
-            tabContents[i].classList.remove("active");
-        }
-        const tabButtons = document.getElementsByClassName("tab-btn");
-        for (let i = 0; i < tabButtons.length; i++) {
-            tabButtons[i].classList.remove("active");
-        }
-        document.getElementById(tabId).classList.add("active");
-        evt.currentTarget.classList.add("active");
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+        const tab = document.getElementById(tabId);
+        tab.classList.add('active');
+        evt.currentTarget.classList.add('active');
+
+        const iframe = tab.querySelector('iframe');
+        if (iframe) loadIframe(iframe);
     }
-    
+
+    // Загружаем активную вкладку сразу
+    loadIframe(document.querySelector('.tab-content.active iframe'));
+
     setInterval(updateTimer, 1000);
 </script>
 </body>
 </html>
-
-
