@@ -12,16 +12,24 @@
             --text-color: #333;
             --border-color: #dee2e6;
         }
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            margin: 0; padding: 20px;
-            background-color: var(--bg-color); color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
         }
         .container {
             width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 15px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
             box-sizing: border-box;
         }
         
@@ -30,8 +38,9 @@
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             display: flex;
+            flex-shrink: 0;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
@@ -57,7 +66,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
+            flex-shrink: 0;
+            margin-bottom: 10px;
         }
         h1 { margin: 0; font-size: 26px; color: #212529; }
         
@@ -79,12 +89,25 @@
         
         .main-layout {
             display: flex;
-            gap: 25px;
+            gap: 15px;
             align-items: flex-start;
+            flex: 1;
+            min-height: 0;
         }
-        .content-area { flex: 1; min-width: 0; }
-        .sidebar-area { width: 250px; flex-shrink: 0; }
         
+        .content-area {
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-area {
+            width: 220px;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
         .tabs-nav {
             display: flex;
             flex-direction: column;
@@ -121,21 +144,28 @@
         }
         
         .tab-content {
+            flex: 1;
             display: none;
             background: #fff;
             border: 1px solid var(--border-color);
             border-radius: 6px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            min-height: 0;
             overflow: hidden;
         }
-        .tab-content.active { display: block; }
 
-        iframe { 
-            width: 100%; 
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        iframe {
+            width: 100%;
             height: calc(100vh - 180px); 
             min-height: 500px;
-            border: none; 
-            display: block; 
+            border: none;
+            display: block;
+            flex: 1;
         }
         @media (max-width: 768px) {
             .main-layout { flex-direction: column-reverse; }
