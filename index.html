@@ -22,6 +22,9 @@
             flex-direction: column;
             padding: 10px;
             box-sizing: border-box;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         }
         .container {
             width: 100%;
@@ -31,28 +34,29 @@
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
+            min-height: 0;
         }
         
         .tg-banner {
             background: linear-gradient(135deg, #24A1DE, #1d82b2);
             color: white;
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             flex-shrink: 0;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
             box-shadow: 0 4px 6px rgba(36, 161, 222, 0.15);
         }
-        .tg-text { font-size: 16px; font-weight: 500; }
+        .tg-text { font-size: 15px; font-weight: 500; }
         .tg-btn {
             background-color: white;
             color: var(--tg-color);
             text-decoration: none;
-            padding: 8px 18px;
+            padding: 7px 16px;
             border-radius: 20px;
             font-weight: bold;
             font-size: 14px;
@@ -67,21 +71,23 @@
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            gap: 10px;
         }
-        h1 { margin: 0; font-size: 26px; color: #212529; }
+        h1 { margin: 0; font-size: 22px; color: #212529; }
         
         .timer-box {
             background-color: #e9ecef;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #495057;
+            white-space: nowrap;
         }
         .timer-countdown {
             font-family: monospace;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             color: var(--primary-color);
             margin-left: 5px;
@@ -89,46 +95,49 @@
         
         .main-layout {
             display: flex;
-            gap: 15px;
-            align-items: flex-start;
+            gap: 12px;
             flex: 1;
             min-height: 0;
+            align-items: stretch;
         }
-        
         .content-area {
             flex: 1;
-            min-height: 0;
             min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
         }
-        
         .sidebar-area {
-            width: 220px;
+            width: 200px;
             flex-shrink: 0;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         .tabs-nav {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             padding: 0;
             margin: 0;
             list-style: none;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
         .tab-btn {
             width: 100%;
             text-align: left;
-            padding: 12px 18px;
+            padding: 10px 14px;
             cursor: pointer;
             background-color: #fff;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             color: #495057;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .tab-btn:hover {
             color: var(--primary-color);
@@ -140,7 +149,7 @@
             background-color: var(--primary-color);
             border-color: var(--primary-color);
             font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
+            box-shadow: 0 3px 6px rgba(0, 123, 255, 0.25);
         }
         
         .tab-content {
@@ -149,47 +158,39 @@
             background: #fff;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
             min-height: 0;
             overflow: hidden;
         }
-
         .tab-content.active {
             display: flex;
             flex-direction: column;
         }
-
         iframe {
-            width: 100%;
-            height: calc(100vh - 180px); 
-            min-height: 500px;
-            border: none;
-            display: block;
             flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            min-height: 0;
+            display: block;
         }
-        @media (max-width: 768px) {
-            .main-layout { flex-direction: column-reverse; }
-            .sidebar-area { width: 100%; }
-            .tabs-nav { flex-direction: row; flex-wrap: wrap; }
-            .tab-btn { width: auto; flex: 1 1 auto; text-align: center; }
-        }
+        
         .theme-btn {
             background: #e9ecef;
             border: none;
             border-radius: 20px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             cursor: pointer;
             font-size: 16px;
-            margin-left: 10px;
+            flex-shrink: 0;
         }
         .theme-btn:hover { background: #dee2e6; }
         
+        /* Dark theme */
         body.dark {
             --bg-color: #1a1d21;
             --text-color: #e9ecef;
             --border-color: #343a40;
-            background-color: var(--bg-color);
-            color: var(--text-color);
         }
         body.dark .tab-content,
         body.dark .tab-btn {
@@ -207,6 +208,41 @@
             color: #e9ecef;
         }
         body.dark h1 { color: #e9ecef; }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            body { padding: 6px; }
+            .tg-banner { padding: 8px 12px; margin-bottom: 6px; }
+            .tg-text { font-size: 14px; }
+            .header-area { margin-bottom: 6px; }
+            h1 { font-size: 18px; }
+            .main-layout {
+                flex-direction: column-reverse;
+                gap: 8px;
+            }
+            .sidebar-area {
+                width: 100%;
+                flex-shrink: 0;
+                max-height: 42%;
+            }
+            .tabs-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                overflow-y: auto;
+                gap: 4px;
+            }
+            .tab-btn {
+                width: auto;
+                flex: 1 1 calc(50% - 4px);
+                text-align: center;
+                padding: 8px 6px;
+                font-size: 13px;
+            }
+            .content-area {
+                flex: 1;
+                min-height: 0;
+            }
+        }
     </style>
 </head>
     
