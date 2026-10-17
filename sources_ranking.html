@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рейтинг упоминаемости источников</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #e2e8f0;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding-top: 140px; /* Отступ для фиксированной шапки */
+        }
+        .header-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            padding: 15px 20px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .header-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+        .meta-info {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 15px;
+            font-size: 0.95rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+        }
+        .clear-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #999;
+            cursor: pointer;
+            display: none;
+            line-height: 1;
+        }
+        .clear-btn:hover {
+            color: #666;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        td {
+            font-size: 0.95rem;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background-color: #f8fafc;
+        }
+        .rank-col {
+            width: 60px;
+            text-align: center;
+            font-weight: bold;
+            color: #64748b;
+        }
+        .mentions-col {
+            width: 100px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        .source-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.1s;
+        }
+        .source-link:hover {
+            text-decoration: underline;
+            color: #2980b9;
+        }
+        .separator {
+            color: #cbd5e1;
+            margin: 0 4px;
+        }
+        .no-results {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 8px;
+            color: #666;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        @media (max-width: 600px) {
+            body {
+                padding-top: 150px;
+            }
+            th, td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-fixed">
+    <div class="header-container">
+        <h1>Рейтинг упоминаемости источников</h1>
+        <div class="meta-info">Обновлено: 16 октября 2026 г. | Одна и та же упомянутая группа ресурсов = 1.</div>
+        <div class="search-wrapper">
+            <input type="text" id="searchInput" class="search-input" placeholder="Поиск источников...">
+            <button id="clearBtn" class="clear-btn" title="Очистить">&times;</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <table id="sourcesTable">
+        <thead>
+            <tr>
+                <th class="rank-col">№</th>
+                <th>Информационный ресурс</th>
+                <th class="mentions-col">Упоминания</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="rank-col">1</td>
+                <td>
+                    <a class="source-link" href="https://www.aa.com.tr/" target="_blank">Anadolu</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.anews.com.tr/" target="_blank">anews</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.aa.com.tr/" target="_blank">aa.com.tr</a>
+                </td>
+                <td class="mentions-col">55</td>
+            </tr>
+            <tr>
+                <td class="rank-col">2</td>
+                <td><a class="source-link" href="https://www.dailysabah.com" target="_blank">Daily Sabah</a></td>
+                <td class="mentions-col">55</td>
+            </tr>
+            <tr>
+                <td class="rank-col">3</td>
+                <td><a class="source-link" href="http://sana.sy" target="_blank">SANA</a></td>
+                <td class="mentions-col">48</td>
+            </tr>
+            <tr>
+                <td class="rank-col">4</td>
+                <td><a class="source-link" href="https://www.reuters.com" target="_blank">Reuters</a></td>
+                <td class="mentions-col">43</td>
+            </tr>
+            <tr>
+                <td class="rank-col">5</td>
+                <td>
+                    <a class="source-link" href="https://www.irna.ir" target="_blank">IRNA</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.mehrnews.com" target="_blank">Mehr</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.tehrantimes.com" target="_blank">Tehran Times</a>
+                </td>
+                <td class="mentions-col">38</td>
+            </tr>
+            <tr>
+                <td class="rank-col">6</td>
+                <td>
+                    <a class="source-link" href="https://www.hurriyetdailynews.com" target="_blank">Hurriyet Daily News</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.hurriyet.com.tr" target="_blank">Hürriyet</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.sabah.com.tr" target="_blank">Sabah</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.milliyet.com.tr" target="_blank">Milliyet</a>
+                </td>
+                <td class="mentions-col">31</td>
+            </tr>
+            <tr>
+                <td class="rank-col">7</td>
+                <td>
+                    <a class="source-link" href="https://www.iletisim.gov.tr" target="_blank">İletişim</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.tccb.gov.tr" target="_blank">tccb.gov.tr</a>
+                </td>
+                <td class="mentions-col">27</td>
+            </tr>
+            <tr>
+                <td class="rank-col">8</td>
+                <td><a class="source-link" href="https://www.aljazeera.com" target="_blank">Al Jazeera</a></td>
+                <td class="mentions-col">23</td>
+            </tr>
+            <tr>
+                <td class="rank-col">9</td>
+                <td>
+                    <a class="source-link" href="https://kyivindependent.com" target="_blank">Kyiv Independent</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.ukrinform.net" target="_blank">Ukrinform</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.president.gov.ua" target="_blank">president.gov.ua</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://mfa.gov.ua" target="_blank">mfa.gov.ua</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://kyivpost.com" target="_blank">Kyiv Post</a>
+                </td>
+                <td class="mentions-col">19</td>
+            </tr>
+            <tr>
+                <td class="rank-col">10</td>
+                <td><a class="source-link" href="https://www.defensehere.com" target="_blank">Defensehere</a></td>
+                <td class="mentions-col">19</td>
+            </tr>
+            <tr>
+                <td class="rank-col">11</td>
+                <td><a class="source-link" href="https://www.turkiyetoday.com" target="_blank">Türkiye Today</a></td>
+                <td class="mentions-col">18</td>
+            </tr>
+            <tr>
+                <td class="rank-col">12</td>
+                <td><a class="source-link" href="https://www.mfa.gov.tr" target="_blank">MFA Turkey (mfa.gov.tr)</a></td>
+                <td class="mentions-col">17</td>
+            </tr>
+            <tr>
+                <td class="rank-col">13</td>
+                <td>
+                    <a class="source-link" href="https://www.trtworld.com" target="_blank">TRT World</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.trtafrika.com" target="_blank">TRT Afrika</a>
+                </td>
+                <td class="mentions-col">16</td>
+            </tr>
+            <tr>
+                <td class="rank-col">14</td>
+                <td><a class="source-link" href="https://www.msb.gov.tr" target="_blank">MSB.gov.tr</a></td>
+                <td class="mentions-col">13</td>
+            </tr>
+            <tr>
+                <td class="rank-col">15</td>
+                <td><a class="source-link" href="https://hormuz.now" target="_blank">hormuz.now (AIS- Мониторинг Проливов)</a></td>
+                <td class="mentions-col">10</td>
+            </tr>
+            <tr>
+                <td class="rank-col">16</td>
+                <td>
+                    <a class="source-link" href="https://www.worldports.com" target="_blank">World Ports</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.marinelink.com" target="_blank">MarineLink</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.ukmto.org" target="_blank">UKMTO-Центр</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://gcaptain.com" target="_blank">gCaptain</a>
+                </td>
+                <td class="mentions-col">8</td>
+            </tr>
+            <tr>
+                <td class="rank-col">17</td>
+                <td><a class="source-link" href="https://www.haberler.com" target="_blank">Haberler.com</a></td>
+                <td class="mentions-col">8</td>
+            </tr>
+            <tr>
+                <td class="rank-col">18</td>
+                <td><a class="source-link" href="https://cyprus-mail.com" target="_blank">Cyprus Mail</a></td>
+                <td class="mentions-col">7</td>
+            </tr>
+            <tr>
+                <td class="rank-col">19</td>
+                <td><a class="source-link" href="https://report.az" target="_blank">Report.az</a></td>
+                <td class="mentions-col">7</td>
+            </tr>
+            <tr>
+                <td class="rank-col">20</td>
+                <td>
+                    <a class="source-link" href="https://www.timesofisrael.com" target="_blank">Times of Israel</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.jpost.com" target="_blank">JPost</a>
+                </td>
+                <td class="mentions-col">7</td>
+            </tr>
+            <tr>
+                <td class="rank-col">21</td>
+                <td><a class="source-link" href="https://www.turdef.com" target="_blank">TURDEF</a></td>
+                <td class="mentions-col">6</td>
+            </tr>
+            <tr>
+                <td class="rank-col">22</td>
+                <td><a class="source-link" href="https://www.yenisafak.com" target="_blank">Yeni Şafak</a></td>
+                <td class="mentions-col">6</td>
+            </tr>
+            <tr>
+                <td class="rank-col">23</td>
+                <td>
+                    <a class="source-link" href="https://www.theguardian.com" target="_blank">The Guardian</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.nytimes.com" target="_blank">NYT</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.bloomberg.com" target="_blank">Bloomberg</a>
+                </td>
+                <td class="mentions-col">6</td>
+            </tr>
+            <tr>
+                <td class="rank-col">24</td>
+                <td><a class="source-link" href="https://www.euronews.com" target="_blank">Euronews</a></td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">25</td>
+                <td>
+                    <a class="source-link" href="https://caliber.az" target="_blank">Caliber.az</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://massispost.com" target="_blank">MassisPost</a>
+                </td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">26</td>
+                <td>
+                    <a class="source-link" href="https://politis.com.cy" target="_blank">Politis</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://knews.kathimerini.com.cy" target="_blank">KNEWS</a>
+                </td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">27</td>
+                <td>
+                    <a class="source-link" href="https://ekathimerini.com" target="_blank">eKathimerini</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.kathimerini.gr" target="_blank">Kathimerini</a>
+                </td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">28</td>
+                <td><a class="source-link" href="https://www.savunmasanayiist.com" target="_blank">SavunmaSanayiST</a></td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">29</td>
+                <td>
+                    <a class="source-link" href="https://www.defensenews.com" target="_blank">Defense News</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.leparisien.fr" target="_blank">Le Parisien</a>
+                </td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">30</td>
+                <td><a class="source-link" href="https://www.bbc.com" target="_blank">BBC</a></td>
+                <td class="mentions-col">4</td>
+            </tr>
+            <tr>
+                <td class="rank-col">31</td>
+                <td><a class="source-link" href="https://www.cnnturk.com" target="_blank">CNN Türk</a></td>
+                <td class="mentions-col">5</td>
+            </tr>
+            <tr>
+                <td class="rank-col">32</td>
+                <td><a class="source-link" href="https://en.apa.az" target="_blank">APA (en.apa.az)</a></td>
+                <td class="mentions-col">3</td>
+            </tr>
+            <tr>
+                <td class="rank-col">33</td>
+                <td>
+                    <a class="source-link" href="https://www.liga.net" target="_blank">LIGA.net</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.turkishminute.com" target="_blank">Turkish Minute</a>
+                </td>
+                <td class="mentions-col">3</td>
+            </tr>
+            <tr>
+                <td class="rank-col">34</td>
+                <td><a class="source-link" href="https://ilkha.com" target="_blank">İLKHA</a></td>
+                <td class="mentions-col">3</td>
+            </tr>
+            <tr>
+                <td class="rank-col">35</td>
+                <td><a class="source-link" href="https://www.ap.org" target="_blank">AP</a></td>
+                <td class="mentions-col">3</td>
+            </tr>
+            <tr>
+                <td class="rank-col">36</td>
+                <td><a class="source-link" href="https://www.ntv.com.tr" target="_blank">NTV</a></td>
+                <td class="mentions-col">3</td>
+            </tr>
+            <tr>
+                <td class="rank-col">37</td>
+                <td><a class="source-link" href="https://www.thenewarab.com" target="_blank">The New Arab</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">38</td>
+                <td><a class="source-link" href="https://www.wam.ae" target="_blank">WAM (Emirates News Agency)</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">39</td>
+                <td><a class="source-link" href="https://www.c4defence.com" target="_blank">C4Defence</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">40</td>
+                <td><a class="source-link" href="https://www.navalnews.com" target="_blank">Naval News</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">41</td>
+                <td><a class="source-link" href="https://www.thenationalnews.com" target="_blank">The National</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">42</td>
+                <td>
+                    <a class="source-link" href="https://agenceurope.eu" target="_blank">Agence Europe</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.eeas.europa.eu" target="_blank">EEAS</a>
+                </td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">43</td>
+                <td>
+                    <a class="source-link" href="http://www.xinhuanet.com" target="_blank">Xinhua</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.farsnews.ir" target="_blank">Fars</a>
+                </td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">44</td>
+                <td><a class="source-link" href="https://www.ekonomim.com" target="_blank">Ekonomim</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">45</td>
+                <td><a class="source-link" href="https://www.star.com.tr" target="_blank">Star</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">46</td>
+                <td><a class="source-link" href="https://iac2026.org" target="_blank">iac2026.org</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">47</td>
+                <td><a class="source-link" href="https://ec.europa.eu/commission/presscorner/home/en" target="_blank">European Commission (presscorner)</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">48</td>
+                <td><a class="source-link" href="https://www.indyturk.com" target="_blank">Independent Türkçe</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">49</td>
+                <td><a class="source-link" href="https://www.syriahr.com" target="_blank">Syrian Observatory for Human Rights</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">50</td>
+                <td><a class="source-link" href="https://www.maritime-executive.com" target="_blank">Maritime Executive</a></td>
+                <td class="mentions-col">2</td>
+            </tr>
+            <tr>
+                <td class="rank-col">51</td>
+                <td><a class="source-link" href="https://www.spa.gov.sa" target="_blank">SPA / Saudi Press Agency</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">52</td>
+                <td><a class="source-link" href="https://armradio.am" target="_blank">Armradio.am</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">53</td>
+                <td><a class="source-link" href="https://www.kristime.com" target="_blank">Kıbrıs Time</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">54</td>
+                <td><a class="source-link" href="https://www.cnn.com" target="_blank">CNN</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">55</td>
+                <td><a class="source-link" href="https://www.exteriores.gob.es" target="_blank">МИД Испании (exteriores.gob.es)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">56</td>
+                <td><a class="source-link" href="https://www.al-monitor.com" target="_blank">Al-Monitor</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">57</td>
+                <td><a class="source-link" href="https://www.europapress.es" target="_blank">Europa Press</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">58</td>
+                <td><a class="source-link" href="https://www.cna.com.cy" target="_blank">CNA</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">59</td>
+                <td><a class="source-link" href="https://www.theedgemarkets.com" target="_blank">The Edge</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">60</td>
+                <td><a class="source-link" href="https://www.gunes.com" target="_blank">Güneş</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">61</td>
+                <td><a class="source-link" href="https://www.newsweek.com" target="_blank">Newsweek</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">62</td>
+                <td><a class="source-link" href="https://www.bairdmaritime.com" target="_blank">Baird Maritime</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">63</td>
+                <td><a class="source-link" href="https://gadebate.un.org" target="_blank">gadebate.un.org</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">64</td>
+                <td><a class="source-link" href="https://www.lemonde.fr" target="_blank">Le Monde</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">65</td>
+                <td><a class="source-link" href="https://www.mgk.gov.tr" target="_blank">MGK.gov.tr</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">66</td>
+                <td><a class="source-link" href="https://shafaq.com" target="_blank">Shafaq News</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">67</td>
+                <td><a class="source-link" href="https://www.ukmto.org" target="_blank">UKMTO.org (Военная охрана)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">68</td>
+                <td><a class="source-link" href="https://www.bloomberght.com" target="_blank">Bloomberg HT</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">69</td>
+                <td><a class="source-link" href="https://www.state.gov" target="_blank">state.gov</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">70</td>
+                <td><a class="source-link" href="https://www.turksat.com.tr" target="_blank">TURKSAT (turksat.com.tr)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">71</td>
+                <td><a class="source-link" href="https://www.aa.com.tr" target="_blank">En Son Dakika (подписка AA)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">72</td>
+                <td><a class="source-link" href="https://www.milletnews.com" target="_blank">Millet News</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">73</td>
+                <td><a class="source-link" href="https://safety4sea.com" target="_blank">Safety4Sea</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">74</td>
+                <td><a class="source-link" href="https://en.mehrnews.com" target="_blank">Avash.news (агентство MNA)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">75</td>
+                <td><a class="source-link" href="https://www.turkiyegazetesi.com.tr" target="_blank">Türkiye Gazetesi</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">76</td>
+                <td><a class="source-link" href="https://www.istigazete.com" target="_blank">İstanbul Ticaret Gazetesi</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">77</td>
+                <td><a class="source-link" href="https://www.antalyakorfez.com" target="_blank">Antalya Körfez</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">78</td>
+                <td><a class="source-link" href="https://anewz.com" target="_blank">AnewZ</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">79</td>
+                <td><a class="source-link" href="https://www.cumhuriyet.com.tr" target="_blank">Cumhuriyet</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">80</td>
+                <td>
+                    <a class="source-link" href="https://sudanindependent.com" target="_blank">Sudan Independent</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://asharqalawsat.com" target="_blank">Asharq Al-Awsat wire</a>
+                </td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">81</td>
+                <td><a class="source-link" href="https://asia.nikkei.com" target="_blank">Nikkei Asia (Reuters-wire)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">82</td>
+                <td><a class="source-link" href="https://www.haber7.com" target="_blank">Haber7</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">83</td>
+                <td><a class="source-link" href="https://www.karar.com" target="_blank">Karar</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">84</td>
+                <td><a class="source-link" href="https://www.kesanonline.com" target="_blank">Keşan Online</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">85</td>
+                <td><a class="source-link" href="https://spaceinafrica.com" target="_blank">Space in Africa (SANSA/TUA)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">86</td>
+                <td><a class="source-link" href="https://www.gazetemerhaba.com" target="_blank">Gazete Merhaba (газета MSB)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">87</td>
+                <td>
+                    <a class="source-link" href="https://www.france24.com" target="_blank">France 24</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://abcnews.go.com" target="_blank">ABC</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.axios.com" target="_blank">Axios</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.npr.org" target="_blank">NPR</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.wsj.com" target="_blank">WSJ homepage</a>
+                </td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">88</td>
+                <td><a class="source-link" href="https://www.elespanol.com" target="_blank">El Español</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">89</td>
+                <td><a class="source-link" href="https://www.doviz.com" target="_blank">Doviz.com</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">90</td>
+                <td><a class="source-link" href="https://gulfnews.com" target="_blank">Gulf News</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">91</td>
+                <td><a class="source-link" href="https://euobserver.com" target="_blank">EUobserver</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">92</td>
+                <td><a class="source-link" href="https://ftlnews.tv" target="_blank">FTL Somalia</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">93</td>
+                <td><a class="source-link" href="https://www.washingtonpost.com" target="_blank">The Washington Post</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">94</td>
+                <td><a class="source-link" href="https://www.dunya.com" target="_blank">Dünya Gazetesi</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">95</td>
+                <td><a class="source-link" href="https://www.takvim.com.tr" target="_blank">Takvim</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr>
+                <td class="rank-col">96</td>
+                <td><a class="source-link" href="http://www.maeci.gov.ml" target="_blank">МИД Мали (MaliMaeci)</a></td>
+                <td class="mentions-col">1</td>
+            </tr>
+            <tr style="opacity: 0.5;">
+                <td class="rank-col">97</td>
+                <td><a class="source-link" href="https://www.ssb.gov.tr" target="_blank">SSB.gov.tr</a></td>
+                <td class="mentions-col">0</td>
+            </tr>
+            <tr style="opacity: 0.5;">
+                <td class="rank-col">98</td>
+                <td>
+                    <a class="source-link" href="https://www.spiegel.de" target="_blank">Spiegel</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.welt.de" target="_blank">Welt</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.rand.org" target="_blank">RAND</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.sage.tubitak.gov.tr" target="_blank">TÜBİTAK SAGE</a>
+                </td>
+                <td class="mentions-col">0</td>
+            </tr>
+            <tr style="opacity: 0.5;">
+                <td class="rank-col">99</td>
+                <td>
+                    <a class="source-link" href="https://www.joc.com" target="_blank">JOC</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://theloadstar.com" target="_blank">Loadstar</a>
+                    <span class="separator">/</span>
+                    <a class="source-link" href="https://www.freightwaves.com" target="_blank">FreightWaves</a>
+                </td>
+                <td class="mentions-col">0</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div id="noResults" class="no-results">Источники по вашему запросу не найдены</div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearBtn');
+    const table = document.getElementById('sourcesTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    const noResults = document.getElementById('noResults');
+
+    searchInput.addEventListener('input', function() {
+        const filter = searchInput.value.toLowerCase().trim();
+        let hasMatches = false;
+
+        // Показ/скрытие кнопки очистки
+        clearBtn.style.display = filter.length > 0 ? 'block' : 'none';
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            // Ищем текст во всей строке (названия ресурсов + цифры)
+            const textContent = row.textContent.toLowerCase();
+
+            if (textContent.includes(filter)) {
+                row.style.display = '';
+                hasMatches = true;
+            } else {
+                row.style.display = 'none';
+            }
+        }
+
+        // Логика отображения пустой таблицы
+        if (hasMatches) {
+            table.style.display = '';
+            noResults.style.display = 'none';
+        } else {
+            table.style.display = 'none';
+            noResults.style.display = 'block';
+        }
+    });
+
+    clearBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        
+        // Показываем все строки обратно
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = '';
+        }
+        table.style.display = '';
+        noResults.style.display = 'none';
+        searchInput.focus();
+    });
+</script>
+
+</body>
+</html>
