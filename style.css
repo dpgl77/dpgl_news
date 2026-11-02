@@ -32,17 +32,17 @@ body {
 .tg-banner {
     background: linear-gradient(135deg, #24A1DE, #1d82b2);
     color: white;
-    padding: 10px 16px;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin-bottom: 4px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 6px;
     flex-shrink: 0;
 }
-.tg-text { font-size: 15px; font-weight: 500; }
+.tg-text { font-size: 12px; font-weight: 500; }
 .tg-btn {
     background: white;
     color: var(--tg-color);
@@ -119,12 +119,12 @@ h1 { margin: 0; font-size: 22px; }
 .tab-btn {
     width: 100%;
     text-align: left;
-    padding: 10px 14px;
+    padding: 6px 10px;
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
 }
 .tab-btn:hover { background: #f1f3f5; color: var(--primary-color); }
 .tab-btn.active {
@@ -132,7 +132,7 @@ h1 { margin: 0; font-size: 22px; }
     color: #fff;
     border-color: var(--primary-color);
 }
-.ranking-link { margin-top: 8px; text-align: center; }
+.ranking-link { margin-top: 4px; text-align: center; }
 
 .tab-content {
     flex: 1;
