@@ -62,3 +62,7 @@ themeBtn.addEventListener('click', () => {
 // Initial load
 loadIframe(document.querySelector('.tab-content.active iframe'));
 setInterval(updateTimer, 1000);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
