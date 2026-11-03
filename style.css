@@ -132,7 +132,7 @@ h1 { margin: 0; font-size: 22px; }
     color: #fff;
     border-color: var(--primary-color);
 }
-.ranking-link { margin-top: 4px; text-align: center; }
+.ranking-link { margin-top: 4px; text-align: center; padding: 6px 10px; }
 
 .tab-content {
     flex: 1;
