@@ -132,7 +132,7 @@ h1 { margin: 0; font-size: 22px; }
     color: #fff;
     border-color: var(--primary-color);
 }
-.ranking-link { margin-top: 4px; text-align: center; padding: 6px 10px; }
+.ranking-link { margin-top: 4px; text-align: center; padding: 4px 6px; }
 
 .tab-content {
     flex: 1;
@@ -174,7 +174,7 @@ body.dark h1 { color: #e9ecef; }
     .main-layout { flex-direction: column-reverse; gap: 8px; }
     .sidebar-area { width: 100%; max-height: 40%; }
     .tabs-nav { flex-direction: row; flex-wrap: wrap; }
-    .tab-btn { width: auto; flex: 1 1 calc(50% - 4px); text-align: center; padding: 6px 4px; font-size: 12px; }
+    .tab-btn { width: auto; flex: 1 1 calc(50% - 4px); text-align: center; padding: 4px 4px; font-size: 12px; }
     .ranking-link {
         width: auto !important;
         flex: 1 1 calc(50% - 4px);
