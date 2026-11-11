@@ -63,6 +63,57 @@ themeBtn.addEventListener('click', () => {
 loadIframe(document.querySelector('.tab-content.active iframe'));
 setInterval(updateTimer, 1000);
 
+let reloadingForUpdate = false;
+let sessionStamp = null;
+
+function reloadForUpdate() {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    window.location.reload();
+}
+
+async function shellStamp() {
+    const files = ['./index.html', './style.css', './script.js'];
+    const parts = [];
+    for (const file of files) {
+        const response = await fetch(file, { cache: 'no-store' });
+        if (!response.ok) return null;
+        parts.push(await response.text());
+    }
+    const text = parts.join('\n');
+    if (!crypto.subtle) return String(text.length);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function reloadIfShellChanged() {
+    if (reloadingForUpdate) return;
+    try {
+        const stamp = await shellStamp();
+        if (!stamp) return;
+        if (sessionStamp === null) {
+            sessionStamp = stamp;
+            return;
+        }
+        if (stamp !== sessionStamp) reloadForUpdate();
+    } catch (e) {}
+}
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (!event.data || event.data.type !== 'dpgl-reload') return;
+        reloadForUpdate();
+    });
+
+    navigator.serviceWorker.register('./sw.js').then(registration => {
+        const checkForUpdate = () => {
+            registration.update().catch(() => {});
+            reloadIfShellChanged();
+        };
+        checkForUpdate();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkForUpdate();
+        });
+        setInterval(checkForUpdate, 30 * 60 * 1000);
+    }).catch(() => {});
 }

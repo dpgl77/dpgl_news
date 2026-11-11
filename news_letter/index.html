@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Бюллетени и обзоры — DPGL NEWS</title>
+<script>
+(function () {
+  var ids = ["Articles", "ASELSAN", "HAVELSAN", "MKE", "STM", "TEI"];
+  var h = decodeURIComponent((location.hash || "").replace(/^#/, ""));
+  if (ids.indexOf(h) === -1) h = ids[0] || "";
+  if (h) document.documentElement.setAttribute("data-open", h);
+})();
+</script>
+<style>
+  :root {
+    --navy: #0b1f3a;
+    --burgundy: #8b0000;
+    --ink: #1d2433;
+    --muted: #5c677a;
+    --paper: #eef1f5;
+    --line: #d5dbe3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  a { color: var(--navy); }
+  .top {
+    background: linear-gradient(135deg, var(--navy), var(--burgundy));
+    color: #fff;
+    padding: 28px 20px 26px;
+  }
+  .top-inner, .wrap { max-width: 920px; margin: 0 auto; }
+  .brand {
+    margin: 0 0 8px;
+    letter-spacing: .14em;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  h1 { margin: 0 0 10px; font-size: 32px; font-weight: 700; line-height: 1.15; }
+  .lead { margin: 0; max-width: 46rem; color: rgba(255,255,255,.92); }
+  .lead a { color: #fff; font-weight: 700; }
+  .tg {
+    display: inline-block;
+    margin-top: 16px;
+    background: #fff;
+    color: var(--navy);
+    text-decoration: none;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 8px 14px;
+  }
+  .tg:hover { background: #f3f6fb; }
+  .wrap { padding: 18px 20px 48px; }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 16px;
+  }
+  .tabs button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--navy);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tabs button:hover { border-color: var(--navy); }
+  html[data-open="Articles"] [data-tab="Articles"],
+  html[data-open="ASELSAN"] [data-tab="ASELSAN"],
+  html[data-open="HAVELSAN"] [data-tab="HAVELSAN"],
+  html[data-open="MKE"] [data-tab="MKE"],
+  html[data-open="STM"] [data-tab="STM"],
+  html[data-open="TEI"] [data-tab="TEI"] {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+  }
+  [data-panel] { display: none; }
+  html[data-open="Articles"] [data-panel="Articles"],
+  html[data-open="ASELSAN"] [data-panel="ASELSAN"],
+  html[data-open="HAVELSAN"] [data-panel="HAVELSAN"],
+  html[data-open="MKE"] [data-panel="MKE"],
+  html[data-open="STM"] [data-panel="STM"],
+  html[data-open="TEI"] [data-panel="TEI"],
+  html:not([data-open]) [data-panel="Articles"] { display: block; }
+  .review {
+    display: grid;
+    grid-template-columns: 11.5rem minmax(0, 1fr);
+    gap: 6px 22px;
+    align-items: baseline;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 0 0 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    border-left: 4px solid transparent;
+  }
+  .review:hover { border-left-color: var(--burgundy); }
+  .review time {
+    color: var(--burgundy);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .name { display: block; font-size: 18px; font-weight: 700; color: var(--navy); }
+  .file { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; }
+  .foot {
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .foot a { font-weight: 700; }
+  @media (max-width: 640px) {
+    h1 { font-size: 26px; }
+    .review { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+<noscript>
+<style>
+  [data-panel] { display: block !important; margin-top: 22px; }
+  .tabs { display: none; }
+</style>
+</noscript>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <p class="brand">DPGL NEWS</p>
+    <h1>Бюллетени и обзоры</h1>
+    <p class="lead">Текст обзора открывается по ссылке. Копирование и печать отключены: PDF получает подписчик канала <a href="https://t.me/dpgl_news">https://t.me/dpgl_news</a>.</p>
+    <a class="tg" href="https://t.me/dpgl_news">Открыть канал DPGL_News</a>
+  </div>
+</header>
+<div class="wrap">
+  <div class="tabs" role="tablist" aria-label="Папки обзоров">
+    <button type="button" id="tab-Articles" data-tab="Articles" role="tab" aria-controls="panel-Articles">Articles</button>
+    <button type="button" id="tab-ASELSAN" data-tab="ASELSAN" role="tab" aria-controls="panel-ASELSAN">ASELSAN</button>
+    <button type="button" id="tab-HAVELSAN" data-tab="HAVELSAN" role="tab" aria-controls="panel-HAVELSAN">HAVELSAN</button>
+    <button type="button" id="tab-MKE" data-tab="MKE" role="tab" aria-controls="panel-MKE">MKE</button>
+    <button type="button" id="tab-STM" data-tab="STM" role="tab" aria-controls="panel-STM">STM</button>
+    <button type="button" id="tab-TEI" data-tab="TEI" role="tab" aria-controls="panel-TEI">TEI</button>
+  </div>
+
+  <section id="panel-Articles" data-panel="Articles" role="tabpanel" aria-labelledby="tab-Articles">
+    <a class="review" href="Articles/HURSAT-2_ru.html">
+      <time datetime="2026-11-05">5 ноября 2026</time>
+      <span>
+        <span class="name">HÜRSAT-2: серийный спутник и отечественный запуск — перевод и справки</span>
+        <span class="file">HURSAT-2_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-ASELSAN" data-panel="ASELSAN" role="tabpanel" aria-labelledby="tab-ASELSAN">
+    <a class="review" href="ASELSAN/ASELSAN_newsletter_26_ru.html">
+      <time datetime="2026-11-02">2 ноября 2026</time>
+      <span>
+        <span class="name">ASELSAN Newsletter #26 — перевод и справки</span>
+        <span class="file">ASELSAN_newsletter_26_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-HAVELSAN" data-panel="HAVELSAN" role="tabpanel" aria-labelledby="tab-HAVELSAN">
+    <a class="review" href="HAVELSAN/HAVELSAN_Stay_Up_To_Date_ru.html">
+      <time datetime="2026-11-09">9 ноября 2026</time>
+      <span>
+        <span class="name">HAVELSAN | Stay Up To Date — перевод и справки</span>
+        <span class="file">HAVELSAN_Stay_Up_To_Date_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-MKE" data-panel="MKE" role="tabpanel" aria-labelledby="tab-MKE">
+    <a class="review" href="MKE/MKE_newsletter_3_ru.html">
+      <time datetime="2026-11-03">3 ноября 2026</time>
+      <span>
+        <span class="name">MKE Newsletter №3 — перевод и справки</span>
+        <span class="file">MKE_newsletter_3_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-STM" data-panel="STM" role="tabpanel" aria-labelledby="tab-STM">
+    <a class="review" href="STM/STM_oktyabr_2026_ru.html">
+      <time datetime="2026-11-02">2 ноября 2026</time>
+      <span>
+        <span class="name">STM: главные события октября 2026 — перевод и справки</span>
+        <span class="file">STM_oktyabr_2026_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-TEI" data-panel="TEI" role="tabpanel" aria-labelledby="tab-TEI">
+    <a class="review" href="TEI/TEI_bulten_sen-okt_2026_ru.html">
+      <time datetime="2026-11-02">2 ноября 2026</time>
+      <span>
+        <span class="name">TEI Bülten, сентябрь–октябрь 2026 — перевод и справки</span>
+        <span class="file">TEI_bulten_sen-okt_2026_ru.html</span>
+      </span>
+    </a>
+  </section>
+
+  <p class="foot">PDF-файлы этих обзоров получает подписчик канала <a href="https://t.me/dpgl_news">https://t.me/dpgl_news</a>.</p>
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  var tabs = document.querySelectorAll("[data-tab]");
+  var order = ["Articles", "ASELSAN", "HAVELSAN", "MKE", "STM", "TEI"];
+  function sync(id, push) {
+    root.setAttribute("data-open", id);
+    tabs.forEach(function (tab) {
+      var on = tab.getAttribute("data-tab") === id;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    });
+    if (push) history.replaceState(null, "", "#" + encodeURIComponent(id));
+  }
+  if (order.length) sync(root.getAttribute("data-open") || order[0], false);
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      sync(tab.getAttribute("data-tab"), true);
+    });
+  });
+  var tablist = document.querySelector("[role=tablist]");
+  if (tablist) tablist.addEventListener("keydown", function (e) {
+    var current = root.getAttribute("data-open");
+    var i = order.indexOf(current);
+    if (e.key === "ArrowRight") i = (i + 1) % order.length;
+    else if (e.key === "ArrowLeft") i = (i - 1 + order.length) % order.length;
+    else return;
+    e.preventDefault();
+    sync(order[i], true);
+    document.getElementById("tab-" + order[i]).focus();
+  });
+})();
+</script>
+</body>
+</html>
