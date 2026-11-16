@@ -93,6 +93,17 @@ def parse_title(raw, path):
     return html.unescape(re.sub(r"\s+", " ", match.group(1))).strip()
 
 
+def button_label(item):
+    """Visible catalog label: a Russian title, never the *.html file name."""
+    title = re.sub(r"\s+", " ", item["title"]).strip()
+    title = re.sub(r"\.html?$", "", title, flags=re.I).strip()
+    stem = Path(item["filename"]).stem
+    looks_like_file = title in {item["filename"], stem, ""} or not re.search(r"[А-Яа-яЁё]", title)
+    if looks_like_file:
+        return f"Новости ВПК Турции от — {item['date_label']}"
+    return title
+
+
 def scan():
     folders = []
     for directory in sorted((p for p in ROOT.iterdir() if p.is_dir() and not p.name.startswith("_")), key=lambda p: p.name.lower()):
@@ -147,16 +158,12 @@ def render_index(folders):
             cards.append(
                 "    <a class=\"review\" href=\"{href}\">\n"
                 "      <time datetime=\"{iso}\">{label}</time>\n"
-                "      <span>\n"
-                "        <span class=\"name\">{title}</span>\n"
-                "        <span class=\"file\">{filename}</span>\n"
-                "      </span>\n"
+                "      <span class=\"name\">{title}</span>\n"
                 "    </a>".format(
                     href=html.escape(item["relative"], quote=True),
                     iso=html.escape(item["date"], quote=True),
                     label=html.escape(item["date_label"]),
-                    title=html.escape(item["title"]),
-                    filename=html.escape(item["filename"]),
+                    title=html.escape(button_label(item)),
                 )
             )
         body = "\n".join(cards) if cards else '    <p class="file">В этой папке пока нет обзоров.</p>'
