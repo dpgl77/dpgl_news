@@ -6,7 +6,7 @@
 <title>Бюллетени и обзоры — DPGL NEWS</title>
 <script>
 (function () {
-  var ids = ["Articles", "ASELSAN", "HAVELSAN", "MKE", "STM", "TEI"];
+  var ids = ["Articles", "ASELSAN", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
   var h = decodeURIComponent((location.hash || "").replace(/^#/, ""));
   if (ids.indexOf(h) === -1) h = ids[0] || "";
   if (h) document.documentElement.setAttribute("data-open", h);
@@ -79,8 +79,10 @@
   .tabs button:hover { border-color: var(--navy); }
   html[data-open="Articles"] [data-tab="Articles"],
   html[data-open="ASELSAN"] [data-tab="ASELSAN"],
+  html[data-open="DefenceTurk"] [data-tab="DefenceTurk"],
   html[data-open="HAVELSAN"] [data-tab="HAVELSAN"],
   html[data-open="MKE"] [data-tab="MKE"],
+  html[data-open="SSBulten"] [data-tab="SSBulten"],
   html[data-open="STM"] [data-tab="STM"],
   html[data-open="TEI"] [data-tab="TEI"] {
     background: var(--navy);
@@ -90,8 +92,10 @@
   [data-panel] { display: none; }
   html[data-open="Articles"] [data-panel="Articles"],
   html[data-open="ASELSAN"] [data-panel="ASELSAN"],
+  html[data-open="DefenceTurk"] [data-panel="DefenceTurk"],
   html[data-open="HAVELSAN"] [data-panel="HAVELSAN"],
   html[data-open="MKE"] [data-panel="MKE"],
+  html[data-open="SSBulten"] [data-panel="SSBulten"],
   html[data-open="STM"] [data-panel="STM"],
   html[data-open="TEI"] [data-panel="TEI"],
   html:not([data-open]) [data-panel="Articles"] { display: block; }
@@ -148,13 +152,22 @@
   <div class="tabs" role="tablist" aria-label="Папки обзоров">
     <button type="button" id="tab-Articles" data-tab="Articles" role="tab" aria-controls="panel-Articles">Articles</button>
     <button type="button" id="tab-ASELSAN" data-tab="ASELSAN" role="tab" aria-controls="panel-ASELSAN">ASELSAN</button>
+    <button type="button" id="tab-DefenceTurk" data-tab="DefenceTurk" role="tab" aria-controls="panel-DefenceTurk">DefenceTurk</button>
     <button type="button" id="tab-HAVELSAN" data-tab="HAVELSAN" role="tab" aria-controls="panel-HAVELSAN">HAVELSAN</button>
     <button type="button" id="tab-MKE" data-tab="MKE" role="tab" aria-controls="panel-MKE">MKE</button>
+    <button type="button" id="tab-SSBulten" data-tab="SSBulten" role="tab" aria-controls="panel-SSBulten">SSBulten</button>
     <button type="button" id="tab-STM" data-tab="STM" role="tab" aria-controls="panel-STM">STM</button>
     <button type="button" id="tab-TEI" data-tab="TEI" role="tab" aria-controls="panel-TEI">TEI</button>
   </div>
 
   <section id="panel-Articles" data-panel="Articles" role="tabpanel" aria-labelledby="tab-Articles">
+    <a class="review" href="Articles/VPK_Turcii_novosti_2026-11-15.html">
+      <time datetime="2026-11-15">15 ноября 2026</time>
+      <span>
+        <span class="name">Новости ВПК Турции — 15 ноября 2026</span>
+        <span class="file">VPK_Turcii_novosti_2026-11-15.html</span>
+      </span>
+    </a>
     <a class="review" href="Articles/VPK_Turcii_novosti_2026-11-14.html">
       <time datetime="2026-11-14">14 ноября 2026</time>
       <span>
@@ -200,6 +213,15 @@
       </span>
     </a>
   </section>
+<section id="panel-DefenceTurk" data-panel="DefenceTurk" role="tabpanel" aria-labelledby="tab-DefenceTurk">
+    <a class="review" href="DefenceTurk/2026-11-16 Defence Turk - Главное за неделю.html">
+      <time datetime="2026-11-16">16 ноября 2026</time>
+      <span>
+        <span class="name">Defence Turk — главное за неделю, 16.11.2026</span>
+        <span class="file">2026-11-16 Defence Turk - Главное за неделю.html</span>
+      </span>
+    </a>
+  </section>
 <section id="panel-HAVELSAN" data-panel="HAVELSAN" role="tabpanel" aria-labelledby="tab-HAVELSAN">
     <a class="review" href="HAVELSAN/HAVELSAN_Stay_Up_To_Date_ru.html">
       <time datetime="2026-11-09">9 ноября 2026</time>
@@ -215,6 +237,15 @@
       <span>
         <span class="name">MKE Newsletter №3 — перевод и справки</span>
         <span class="file">MKE_newsletter_3_ru.html</span>
+      </span>
+    </a>
+  </section>
+<section id="panel-SSBulten" data-panel="SSBulten" role="tabpanel" aria-labelledby="tab-SSBulten">
+    <a class="review" href="SSBulten/2026-11-15 Еженедельный бюллетень SSBülten 09.11.2026-14.11.2026.html">
+      <time datetime="2026-11-14">14 ноября 2026</time>
+      <span>
+        <span class="name">Еженедельный бюллетень SSBülten, 09.11.2026 - 14.11.2026</span>
+        <span class="file">2026-11-15 Еженедельный бюллетень SSBülten 09.11.2026-14.11.2026.html</span>
       </span>
     </a>
   </section>
@@ -243,7 +274,7 @@
 (function () {
   var root = document.documentElement;
   var tabs = document.querySelectorAll("[data-tab]");
-  var order = ["Articles", "ASELSAN", "HAVELSAN", "MKE", "STM", "TEI"];
+  var order = ["Articles", "ASELSAN", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
   function sync(id, push) {
     root.setAttribute("data-open", id);
     tabs.forEach(function (tab) {
