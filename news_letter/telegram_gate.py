@@ -86,6 +86,18 @@ def subscribed(bot_token, user_id):
     return status == "restricted" and bool(member.get("is_member"))
 
 
+def read_offset():
+    if not OFFSET_PATH.exists():
+        return 0
+    raw = OFFSET_PATH.read_text(encoding="utf-8").strip()
+    if not raw:
+        return 0
+    try:
+        return int(raw)
+    except ValueError:
+        return 0
+
+
 def lookup(start_token):
     if not STATE_PATH.exists():
         return None
@@ -121,7 +133,12 @@ def handle(bot_token, message):
     if not subscribed(bot_token, user["id"]):
         api(bot_token, "sendMessage", {
             "chat_id": chat["id"],
-            "text": "PDF доступен только подписчикам @dpgl_news. Подпишитесь: https://t.me/dpgl_news и снова откройте ссылку из канала.",
+            "text": (
+                "Вы не подписаны на канал @dpgl_news, поэтому PDF не отправлен. "
+                "Подпишитесь: https://t.me/dpgl_news "
+                "и повторите запрос — снова нажмите «Скачать PDF» "
+                f"или отправьте команду /start {payload}."
+            ),
         })
         return
     caption = f"<b>{record['title']}</b>\n{record['date_label']}"
@@ -142,7 +159,7 @@ def main():
         print("gate: already running")
         return
     try:
-        offset = int(OFFSET_PATH.read_text(encoding="utf-8").strip()) if OFFSET_PATH.exists() else 0
+        offset = read_offset()
         updates = api(bot_token, "getUpdates", {
             "offset": offset,
             "timeout": 0,
@@ -156,6 +173,11 @@ def main():
         if updates:
             OFFSET_PATH.write_text(str(offset), encoding="utf-8")
         print(f"gate: updates {len(updates)}")
+        try:
+            import publish_catalog
+            publish_catalog.publish_new(bot_token)
+        except Exception as exc:
+            print(f"catalog error: {exc}")
     finally:
         LOCK_PATH.unlink(missing_ok=True)
 
