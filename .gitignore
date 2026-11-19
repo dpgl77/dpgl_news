@@ -1,1 +1,3 @@
 news_letter/_private/
+__pycache__/
+*.pyc

@@ -26,6 +26,7 @@ LOCK_PATH = ROOT / "_private" / "gate.lock"
 EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 CHANNEL = "@dpgl_news"
+SITE = "https://dpgl77.github.io/dpgl_news"
 
 
 def review_files():
@@ -228,24 +229,111 @@ def announce_new(bot_token):
     return posted
 
 
-def git_publish():
-    html_files = [
-        str(path.relative_to(REPO)).replace("\\", "/")
-        for path in review_files()
-    ]
-    html_files.append("news_letter/index.html")
-    subprocess.run(["git", "add", "--", *html_files], cwd=REPO, check=False)
-    staged = subprocess.run(
-        ["git", "diff", "--cached", "--name-only"],
+def page_url(path):
+    rel = path.relative_to(REPO).as_posix()
+    if rel == "index.html":
+        return SITE + "/"
+    if rel.endswith("/index.html"):
+        rel = rel[: -len("index.html")]
+    return SITE + "/" + urllib.parse.quote(rel, safe="/")
+
+
+def lastmod(path):
+    rel = path.relative_to(REPO).as_posix()
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", rel],
         cwd=REPO,
         capture_output=True,
         text=True,
         check=False,
-    ).stdout.split()
+    ).stdout.strip()
+    if not status:
+        committed = subprocess.run(
+            ["git", "log", "-1", "--format=%cs", "--", rel],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        if committed:
+            return committed
+    return date.fromtimestamp(path.stat().st_mtime).isoformat()
+
+
+def public_pages():
+    hubs = [
+        REPO / "index.html",
+        ROOT / "index.html",
+        REPO / "sources_ranking.html",
+    ]
+    pages = [path for path in hubs if path.is_file()]
+    pages.extend(review_files())
+    return pages
+
+
+def write_sitemap():
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for path in public_pages():
+        loc = html.escape(page_url(path), quote=False)
+        lines.append("  <url>")
+        lines.append(f"    <loc>{loc}</loc>")
+        lines.append(f"    <lastmod>{lastmod(path)}</lastmod>")
+        lines.append("  </url>")
+    lines.append("</urlset>")
+    text = "\n".join(lines) + "\n"
+    target = REPO / "sitemap.xml"
+    if target.is_file() and target.read_text(encoding="utf-8") == text:
+        return False
+    target.write_text(text, encoding="utf-8", newline="\n")
+    print(f"sitemap: {len(public_pages())} urls")
+    return True
+
+
+def commit_message(names):
+    today = date.today().isoformat()
+    paths = [name.replace("\\", "/") for name in names]
+    news = [path for path in paths if path.startswith("news_letter/")]
+    ranking = [path for path in paths if path == "sources_ranking.html"]
+    other = [path for path in paths if path not in news and path not in ranking]
+    if paths and not other and not news:
+        return f"Update source ranking {today}"
+    if paths and not other and not ranking:
+        return f"News articles {today}"
+    if paths and not other and news and ranking:
+        return f"News articles and source ranking {today}"
+    return f"Update dpgl_news {today}"
+
+
+def git_publish():
+    subprocess.run(["git", "add", "-A"], cwd=REPO, check=False)
+    subprocess.run(
+        ["git", "reset", "-q", "--", "news_letter/_private", "news_letter/__pycache__"],
+        cwd=REPO,
+        check=False,
+    )
+    staged_raw = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "-z"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    staged = []
+    for name in staged_raw.split("\0"):
+        if not name:
+            continue
+        parts = name.replace("\\", "/").split("/")
+        if "_private" in parts or "__pycache__" in parts or name.endswith(".pyc"):
+            subprocess.run(["git", "reset", "-q", "--", name], cwd=REPO, check=False)
+            continue
+        staged.append(name)
     if not staged:
         print("git: nothing to commit")
         return False
-    message = f"News articles {date.today().isoformat()}"
+    message = commit_message(staged)
     committed = subprocess.run(
         ["git", "commit", "-m", message],
         cwd=REPO,
@@ -255,7 +343,19 @@ def git_publish():
         print("git: commit failed")
         return False
     pushed = subprocess.run(["git", "push", "origin", "main"], cwd=REPO, check=False)
-    print(f"git: push {pushed.returncode}")
+    if pushed.returncode != 0:
+        print("git: push failed, rebase once")
+        pulled = subprocess.run(
+            ["git", "pull", "--rebase", "origin", "main"],
+            cwd=REPO,
+            check=False,
+        )
+        if pulled.returncode != 0:
+            subprocess.run(["git", "rebase", "--abort"], cwd=REPO, check=False)
+            print("git: rebase failed")
+            return False
+        pushed = subprocess.run(["git", "push", "origin", "main"], cwd=REPO, check=False)
+    print(f"git: push {pushed.returncode} {message}")
     return pushed.returncode == 0
 
 
@@ -264,8 +364,8 @@ def publish_new(bot_token):
     indexed = ensure_index()
     built = build_missing_pdfs()
     posted = announce_new(bot_token) if bot_token else []
-    if linked or indexed or built or posted:
-        git_publish()
+    write_sitemap()
+    git_publish()
     print(
         f"catalog: links {len(linked)}, index {len(indexed)}, "
         f"pdf {len(built)}, posted {len(posted)}"
