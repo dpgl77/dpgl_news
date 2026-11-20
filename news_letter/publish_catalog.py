@@ -103,8 +103,39 @@ def catalog_tabs(text):
     return value
 
 
+def catalog_css(folders):
+    if not folders:
+        return "  [data-panel] { display: none; }\n"
+    tab_rules = ",\n".join(
+        f'  html[data-open="{name}"] [data-tab="{name}"]' for name in folders
+    )
+    panel_rules = ",\n".join(
+        f'  html[data-open="{name}"] [data-panel="{name}"]' for name in folders
+    )
+    first = folders[0]
+    return (
+        "  [data-panel] { display: none; }\n"
+        f"{tab_rules} {{\n"
+        "    background: var(--navy);\n"
+        "    border-color: var(--navy);\n"
+        "    color: #fff;\n"
+        "  }\n"
+        f"{panel_rules},\n"
+        f'  html:not([data-open]) [data-panel="{first}"] {{ display: block; }}\n'
+    )
+
+
 def render_index(text, folders, groups):
     payload = json.dumps(folders, ensure_ascii=False)
+    text, count = re.subn(
+        r"/\* catalog-css \*/.*?/\* /catalog-css \*/",
+        "/* catalog-css */\n" + catalog_css(folders) + "  /* /catalog-css */",
+        text,
+        count=1,
+        flags=re.S,
+    )
+    if count != 1:
+        return None
     text, count = re.subn(
         r'(<script type="application/json" id="catalog-tabs">).*?(</script>)',
         lambda match: match.group(1) + payload + match.group(2),
@@ -178,6 +209,14 @@ def ensure_index():
     updated = render_index(text, folders, groups)
     if updated is None:
         print("index: template missing, not written")
+        return []
+    if (
+        len(updated) < 2000
+        or "<!DOCTYPE html>" not in updated
+        or '<p class="foot"' not in updated
+        or "catalog-tabs" not in updated
+    ):
+        print("index: refused to write incomplete page")
         return []
     if updated == text:
         return []
