@@ -45,12 +45,26 @@
 }
 </script>
 <title>Бюллетени и обзоры — DPGL NEWS</title>
+<script type="application/json" id="catalog-tabs">["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"]</script>
 <script>
 (function () {
-  var ids = ["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
+  var ids = JSON.parse(document.getElementById("catalog-tabs").textContent);
   var h = decodeURIComponent((location.hash || "").replace(/^#/, ""));
   if (ids.indexOf(h) === -1) h = ids[0] || "";
   if (h) document.documentElement.setAttribute("data-open", h);
+  var css = "";
+  for (var i = 0; i < ids.length; i++) {
+    var q = ids[i].replace(/\\/g, "\\\\").replace(/"/g, "\\"");
+    css += "html[data-open=\"" + q + "\"] [data-tab=\"" + q + "\"]{background:var(--navy);border-color:var(--navy);color:#fff}";
+    css += "html[data-open=\"" + q + "\"] [data-panel=\"" + q + "\"]{display:block}";
+  }
+  if (ids.length) {
+    var first = ids[0].replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+    css += "html:not([data-open]) [data-panel=\"" + first + "\"]{display:block}";
+  }
+  var style = document.createElement("style");
+  style.appendChild(document.createTextNode(css));
+  document.head.appendChild(style);
 })();
 </script>
 <style>
@@ -106,30 +120,7 @@
     white-space: nowrap;
   }
   .tabs button:hover { border-color: var(--navy); }
-  html[data-open="Articles"] [data-tab="Articles"],
-  html[data-open="ASELSAN"] [data-tab="ASELSAN"],
-  html[data-open="BAYKAR"] [data-tab="BAYKAR"],
-  html[data-open="DefenceTurk"] [data-tab="DefenceTurk"],
-  html[data-open="HAVELSAN"] [data-tab="HAVELSAN"],
-  html[data-open="MKE"] [data-tab="MKE"],
-  html[data-open="SSBulten"] [data-tab="SSBulten"],
-  html[data-open="STM"] [data-tab="STM"],
-  html[data-open="TEI"] [data-tab="TEI"] {
-    background: var(--navy);
-    border-color: var(--navy);
-    color: #fff;
-  }
   [data-panel] { display: none; }
-  html[data-open="Articles"] [data-panel="Articles"],
-  html[data-open="ASELSAN"] [data-panel="ASELSAN"],
-  html[data-open="BAYKAR"] [data-panel="BAYKAR"],
-  html[data-open="DefenceTurk"] [data-panel="DefenceTurk"],
-  html[data-open="HAVELSAN"] [data-panel="HAVELSAN"],
-  html[data-open="MKE"] [data-panel="MKE"],
-  html[data-open="SSBulten"] [data-panel="SSBulten"],
-  html[data-open="STM"] [data-panel="STM"],
-  html[data-open="TEI"] [data-panel="TEI"],
-  html:not([data-open]) [data-panel="Articles"] { display: block; }
   .review {
     display: grid;
     grid-template-columns: 9.2rem minmax(0, 1fr);
@@ -283,7 +274,7 @@
 (function () {
   var root = document.documentElement;
   var tabs = document.querySelectorAll("[data-tab]");
-  var order = ["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
+  var order = JSON.parse(document.getElementById("catalog-tabs").textContent);
   function sync(id, push) {
     root.setAttribute("data-open", id);
     tabs.forEach(function (tab) {

@@ -6,6 +6,7 @@ and the git steps after them. Does not build the daily briefing or the
 source ranking. PDF conversion never writes the source HTML.
 """
 import html
+import json
 import re
 import shutil
 import subprocess
@@ -27,13 +28,27 @@ EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 CHANNEL = "@dpgl_news"
 SITE = "https://dpgl77.github.io/dpgl_news"
+SKIP_DIRS = {"_private", "__pycache__"}
+
+
+def catalog_folders():
+    names = [
+        path.name
+        for path in ROOT.iterdir()
+        if path.is_dir() and path.name not in SKIP_DIRS and not path.name.startswith(".")
+    ]
+    names.sort(key=str.casefold)
+    if "Articles" in names:
+        names.remove("Articles")
+        names.insert(0, "Articles")
+    return names
 
 
 def review_files():
-    return [
-        path for path in sorted(ROOT.rglob("*.html"))
-        if path.name != "index.html" and "_private" not in path.parts
-    ]
+    files = []
+    for name in catalog_folders():
+        files.extend(sorted((ROOT / name).glob("*.html")))
+    return files
 
 
 def download_paragraph(token):
@@ -71,48 +86,107 @@ def card(href, iso, label, title):
     )
 
 
+def catalog_tabs(text):
+    match = re.search(
+        r'<script type="application/json" id="catalog-tabs">(.*?)</script>',
+        text,
+        re.S,
+    )
+    if not match:
+        return None
+    try:
+        value = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        return None
+    return value
+
+
+def render_index(text, folders, groups):
+    payload = json.dumps(folders, ensure_ascii=False)
+    text, count = re.subn(
+        r'(<script type="application/json" id="catalog-tabs">).*?(</script>)',
+        lambda match: match.group(1) + payload + match.group(2),
+        text,
+        count=1,
+        flags=re.S,
+    )
+    if count != 1:
+        return None
+    button_lines = []
+    section_blocks = []
+    for name in folders:
+        esc = html.escape(name, quote=True)
+        button_lines.append(
+            f'    <button type="button" id="tab-{esc}" data-tab="{esc}" role="tab" '
+            f'aria-controls="panel-{esc}">{html.escape(name)}</button>'
+        )
+        cards = [
+            card(relative, iso, label, title).rstrip("\n")
+            for iso, relative, label, title in groups[name]
+        ]
+        body = "\n" + "\n".join(cards) + "\n  " if cards else ""
+        section_blocks.append(
+            f'  <section id="panel-{esc}" data-panel="{esc}" role="tabpanel" '
+            f'aria-labelledby="tab-{esc}">{body}</section>'
+        )
+    buttons = "\n".join(button_lines)
+    sections = "\n".join(section_blocks)
+    text, count = re.subn(
+        r'(<div class="tabs" role="tablist" aria-label="Папки обзоров">).*?(</div>)',
+        lambda match: match.group(1) + "\n" + buttons + "\n  " + match.group(2),
+        text,
+        count=1,
+        flags=re.S,
+    )
+    if count != 1:
+        return None
+    text, count = re.subn(
+        r'(</div>)\s*(?:<section id="panel-[\s\S]*?</section>\s*)*(?=\s*<p class="foot">)',
+        lambda match: match.group(1) + "\n\n" + sections + "\n\n  ",
+        text,
+        count=1,
+    )
+    if count != 1:
+        return None
+    return text
+
+
 def ensure_index():
     index_path = ROOT / "index.html"
-    text = index_path.read_text(encoding="utf-8")
-    present = set(re.findall(r'href="([^"]+\.html)"', text))
-    added = []
-    for path in review_files():
-        relative = path.relative_to(ROOT).as_posix()
-        if relative in present or f"{path.parent.name}/{path.name}" in present:
-            continue
+    data = index_path.read_bytes()
+    crlf = b"\r\n" in data
+    text = data.decode("utf-8").replace("\r\n", "\n")
+    folders = catalog_folders()
+    files = review_files()
+    current = {path.relative_to(ROOT).as_posix() for path in files}
+    hrefs = set(re.findall(r'href="((?:[^"]+/)+[^"]+\.html)"', text))
+    tabs = catalog_tabs(text)
+    newest = max((path.stat().st_mtime for path in files), default=0)
+    if tabs == folders and hrefs == current and newest <= index_path.stat().st_mtime + 1:
+        return []
+    groups = {name: [] for name in folders}
+    for path in files:
         raw = path.read_text(encoding="utf-8")
         iso, label = register_pdf.parse_date(raw, path)
         title = register_pdf.parse_title(raw, path)
-        folder = path.parent.name
-        marker = f'data-panel="{folder}"'
-        if marker not in text:
-            print(f"index: no tab for {folder}, skipped {relative}")
-            continue
-        block = card(relative, iso, label, title)
-        section = re.search(
-            rf'(<section id="panel-{re.escape(folder)}"[^>]*>)(.*?)(</section>)',
-            text,
-            re.S,
-        )
-        if not section:
-            print(f"index: section missing for {folder}")
-            continue
-        body = section.group(2)
-        cards = list(re.finditer(r'<a class="review"[\s\S]*?</a>\s*', body))
-        insert_at = len(body)
-        for found in cards:
-            stamp = re.search(r'datetime="(\d{4}-\d{2}-\d{2})"', found.group(0))
-            if stamp and stamp.group(1) < iso:
-                insert_at = found.start()
-                break
-            insert_at = found.end()
-        body = body[:insert_at] + block + body[insert_at:]
-        text = text[:section.start(2)] + body + text[section.end(2):]
-        present.add(relative)
-        added.append(relative)
-    if added:
-        index_path.write_text(text, encoding="utf-8")
-    return added
+        relative = path.relative_to(ROOT).as_posix()
+        groups[path.parent.name].append((iso, relative, label, title))
+    for name in groups:
+        groups[name].sort(key=lambda item: (item[0], item[1]), reverse=True)
+    updated = render_index(text, folders, groups)
+    if updated is None:
+        print("index: template missing, not written")
+        return []
+    if updated == text:
+        return []
+    out = updated.replace("\n", "\r\n") if crlf else updated
+    index_path.write_bytes(out.encode("utf-8"))
+    added = sorted(current - hrefs)
+    removed = sorted(hrefs - current)
+    print(f"index: folders {len(folders)}, added {len(added)}, removed {len(removed)}")
+    return added or ["index.html"]
 
 
 def printable_html(raw):
@@ -370,3 +444,18 @@ def publish_new(bot_token):
         f"catalog: links {len(linked)}, index {len(indexed)}, "
         f"pdf {len(built)}, posted {len(posted)}"
     )
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sync-index", action="store_true")
+    args = parser.parse_args()
+    if not args.sync_index:
+        raise SystemExit("usage: publish_catalog.py --sync-index")
+    changed = ensure_index()
+    print("index: updated" if changed else "index: unchanged")
+
+
+if __name__ == "__main__":
+    main()
