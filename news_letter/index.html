@@ -47,7 +47,7 @@
 <title>Бюллетени и обзоры — DPGL NEWS</title>
 <script>
 (function () {
-  var ids = ["Articles", "ASELSAN", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
+  var ids = ["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
   var h = decodeURIComponent((location.hash || "").replace(/^#/, ""));
   if (ids.indexOf(h) === -1) h = ids[0] || "";
   if (h) document.documentElement.setAttribute("data-open", h);
@@ -108,6 +108,7 @@
   .tabs button:hover { border-color: var(--navy); }
   html[data-open="Articles"] [data-tab="Articles"],
   html[data-open="ASELSAN"] [data-tab="ASELSAN"],
+  html[data-open="BAYKAR"] [data-tab="BAYKAR"],
   html[data-open="DefenceTurk"] [data-tab="DefenceTurk"],
   html[data-open="HAVELSAN"] [data-tab="HAVELSAN"],
   html[data-open="MKE"] [data-tab="MKE"],
@@ -121,6 +122,7 @@
   [data-panel] { display: none; }
   html[data-open="Articles"] [data-panel="Articles"],
   html[data-open="ASELSAN"] [data-panel="ASELSAN"],
+  html[data-open="BAYKAR"] [data-panel="BAYKAR"],
   html[data-open="DefenceTurk"] [data-panel="DefenceTurk"],
   html[data-open="HAVELSAN"] [data-panel="HAVELSAN"],
   html[data-open="MKE"] [data-panel="MKE"],
@@ -179,6 +181,7 @@
   <div class="tabs" role="tablist" aria-label="Папки обзоров">
     <button type="button" id="tab-Articles" data-tab="Articles" role="tab" aria-controls="panel-Articles">Articles</button>
     <button type="button" id="tab-ASELSAN" data-tab="ASELSAN" role="tab" aria-controls="panel-ASELSAN">ASELSAN</button>
+    <button type="button" id="tab-BAYKAR" data-tab="BAYKAR" role="tab" aria-controls="panel-BAYKAR">BAYKAR</button>
     <button type="button" id="tab-DefenceTurk" data-tab="DefenceTurk" role="tab" aria-controls="panel-DefenceTurk">DefenceTurk</button>
     <button type="button" id="tab-HAVELSAN" data-tab="HAVELSAN" role="tab" aria-controls="panel-HAVELSAN">HAVELSAN</button>
     <button type="button" id="tab-MKE" data-tab="MKE" role="tab" aria-controls="panel-MKE">MKE</button>
@@ -225,6 +228,12 @@
     <a class="review" href="ASELSAN/ASELSAN_newsletter_26_ru.html">
       <time datetime="2026-11-02">2 ноября 2026</time>
       <span class="name">ASELSAN Newsletter #26 — перевод и справки</span>
+    </a>
+  </section>
+<section id="panel-BAYKAR" data-panel="BAYKAR" role="tabpanel" aria-labelledby="tab-BAYKAR">
+    <a class="review" href="BAYKAR/Baykar_novosti_2026-11-19.html">
+      <time datetime="2026-11-19">19 ноября 2026</time>
+      <span class="name">KIZILELMA принят на вооружение: история, ТТХ, производство, заказы и аналоги</span>
     </a>
   </section>
 <section id="panel-DefenceTurk" data-panel="DefenceTurk" role="tabpanel" aria-labelledby="tab-DefenceTurk">
@@ -274,7 +283,7 @@
 (function () {
   var root = document.documentElement;
   var tabs = document.querySelectorAll("[data-tab]");
-  var order = ["Articles", "ASELSAN", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
+  var order = ["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"];
   function sync(id, push) {
     root.setAttribute("data-open", id);
     tabs.forEach(function (tab) {
