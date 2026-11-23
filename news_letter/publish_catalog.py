@@ -63,6 +63,24 @@ def review_files():
     return html_files(catalog_folders())
 
 
+def equipment_files():
+    """Equipment reference pages. They are not news tabs. index.html is not a PDF."""
+    files = []
+    for name in sorted(CATALOG_SKIP):
+        folder = ROOT / name
+        if not folder.is_dir():
+            continue
+        files.extend(
+            path for path in sorted(folder.glob("*.html"))
+            if path.name.lower() != "index.html"
+        )
+    return files
+
+
+def pdf_source_files():
+    return review_files() + equipment_files()
+
+
 def download_paragraph(token):
     link = f"https://t.me/dpgl77_bot?start=nl_{token}"
     return (
@@ -74,8 +92,9 @@ def download_paragraph(token):
 
 def ensure_download_links():
     changed = []
-    for path in review_files():
-        raw = path.read_text(encoding="utf-8")
+    for path in pdf_source_files():
+        with open(path, encoding="utf-8", newline="") as handle:
+            raw = handle.read()
         if 'id="dpgl-pdf-link"' in raw:
             continue
         relative = path.relative_to(ROOT).as_posix()
@@ -84,7 +103,8 @@ def ensure_download_links():
             raw = raw.replace("</body>", paragraph + "</body>", 1)
         else:
             raw += paragraph
-        path.write_text(raw, encoding="utf-8")
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(raw)
         changed.append(relative)
     return changed
 
@@ -273,7 +293,7 @@ def build_missing_pdfs():
     if not browser.exists():
         print("pdf: browser not found")
         return built
-    for path in review_files():
+    for path in pdf_source_files():
         relative = path.relative_to(ROOT).with_suffix(".pdf")
         destination = PDF_ROOT / relative
         if destination.exists() and destination.stat().st_size > 1000:
