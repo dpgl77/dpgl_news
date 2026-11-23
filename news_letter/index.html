@@ -64,8 +64,14 @@
     --line: #d5dbe3;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  @supports (height: 100dvh) {
+    html, body { height: 100dvh; }
+  }
   body {
     margin: 0;
+    display: flex;
+    flex-direction: column;
     font-family: "Segoe UI", Roboto, Arial, sans-serif;
     background: var(--paper);
     color: var(--ink);
@@ -73,6 +79,8 @@
   }
   a { color: var(--navy); }
   .top {
+    flex: 0 0 auto;
+    width: 100%;
     background: linear-gradient(135deg, var(--navy), var(--burgundy));
     color: #fff;
     padding: 16px 20px 14px;
@@ -104,8 +112,17 @@
     line-height: 1.2;
   }
   a.back:hover { background: #eef1f5; }
-  .wrap { padding: 16px 16px 28px; }
+  .wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 16px 16px 12px;
+  }
   .tabs {
+    flex: 0 0 auto;
     display: flex;
     gap: 8px;
     overflow-x: auto;
@@ -152,6 +169,13 @@
   html[data-open="TEI"] [data-panel="TEI"],
   html:not([data-open]) [data-panel="Articles"] { display: block; }
   /* /catalog-css */
+  .wrap > [data-panel] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .foot { flex: 0 0 auto; }
   .review {
     display: grid;
     grid-template-columns: 9.2rem minmax(0, 1fr);
