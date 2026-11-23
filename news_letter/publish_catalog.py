@@ -109,6 +109,108 @@ def ensure_download_links():
     return changed
 
 
+HEADER_STYLE_OLD = """
+/* site-wide header, same as news_letter/index.html */
+header.top{background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
+header.top .top-inner{max-width:42rem;margin:0 auto}
+header.top .brand{margin:0 0 2px;letter-spacing:.14em;font-size:11px;font-weight:700}
+header.top h1{margin:0;font-size:26px;font-weight:700;line-height:1.25}
+header.top .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header.top .title-row h1{flex:1 1 auto;min-width:0}
+header.top a.back{flex:0 0 auto;background:#fff;color:#0b1f3a;border-radius:6px;padding:6px 14px;font-size:15px;font-weight:700;text-decoration:none;line-height:1.2}
+header.top a.back:hover{background:#eef1f5}
+header.top a.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
+header.top .meta{margin-top:6px}
+header.top .hero{margin:14px -20px -14px}
+header.top .hero img{width:100%;max-height:460px;object-fit:cover;display:block}
+#dpgl-guard:empty{display:none}
+body.is-index header.top .top-inner{max-width:72rem}
+@media (max-width:640px){header.top h1{font-size:20px}}
+@media print{header.top a.back{display:none}}
+"""
+
+HEADER_STYLE_NEW = """
+/* site-wide header, same as news_letter/index.html. The title bar stays put. */
+header.top{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
+header.top .top-inner{max-width:42rem;margin:0 auto}
+header.top .brand{margin:0 0 2px;letter-spacing:.14em;font-size:11px;font-weight:700}
+header.top h1{margin:0;font-size:26px;font-weight:700;line-height:1.25}
+header.top .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header.top .title-row h1{flex:1 1 auto;min-width:0}
+header.top a.back{flex:0 0 auto;background:#fff;color:#0b1f3a;border-radius:6px;padding:6px 14px;font-size:15px;font-weight:700;text-decoration:none;line-height:1.2}
+header.top a.back:hover{background:#eef1f5}
+header.top a.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
+header.top .meta{margin-top:6px}
+.hero{margin:0}
+.hero img{width:100%;max-height:460px;object-fit:cover;display:block}
+#dpgl-guard:empty{display:none}
+body.is-index header.top .top-inner{max-width:72rem}
+@media (max-width:640px){header.top h1{font-size:20px}}
+@media print{header.top{position:static}header.top a.back{display:none}}
+"""
+
+
+def _with_newlines(text, newline):
+    return text.replace("\n", newline)
+
+
+def move_cover_out_of_header(raw):
+    """Keep the cover in the scrolling page. A sticky header must stay a short title bar."""
+    match = re.search(r'<header class="top">(.*?)</header>', raw, re.S)
+    if not match or 'class="hero"' not in match.group(1):
+        return raw
+    hero_match = re.search(r'<div class="hero">.*?</div>', match.group(1), re.S)
+    if not hero_match:
+        return raw
+    inner = match.group(1)[:hero_match.start()] + match.group(1)[hero_match.end():]
+    return (
+        raw[:match.start()]
+        + '<header class="top">'
+        + inner
+        + "</header>"
+        + hero_match.group(0)
+        + raw[match.end():]
+    )
+
+
+def ensure_fixed_headers():
+    """Pin the title bar with «Назад» on review pages. VVT is left scrolling."""
+    changed = []
+    for path in review_files():
+        with open(path, encoding="utf-8", newline="") as handle:
+            raw = handle.read()
+        if 'class="back"' not in raw or 'class="top"' not in raw:
+            continue
+        original = raw
+        newline = "\r\n" if "\r\n" in raw else "\n"
+        old_style = "<style id=\"site-header-v1\">" + _with_newlines(HEADER_STYLE_OLD, newline) + "</style>"
+        new_style = "<style id=\"site-header-v1\">" + _with_newlines(HEADER_STYLE_NEW, newline) + "</style>"
+        if old_style in raw:
+            raw = raw.replace(old_style, new_style, 1)
+        elif 'id="site-header-v1"' not in raw:
+            raw = raw.replace("</head>", new_style + "</head>", 1)
+        elif "position:sticky" not in raw:
+            raw = raw.replace(
+                "header.top{",
+                "header.top{position:sticky;top:0;z-index:40;",
+                1,
+            )
+            raw = raw.replace(
+                "@media print{header.top a.back{display:none}}",
+                "@media print{header.top{position:static}header.top a.back{display:none}}",
+                1,
+            )
+            raw = raw.replace("header.top .hero{", ".hero{")
+            raw = raw.replace("header.top .hero img{", ".hero img{")
+        raw = move_cover_out_of_header(raw)
+        if raw == original:
+            continue
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(raw)
+        changed.append(path.relative_to(ROOT).as_posix())
+    return changed
+
+
 def card(href, iso, label, title):
     return (
         f'    <a class="review" href="{html.escape(href, quote=True)}">\n'
@@ -510,13 +612,14 @@ def git_publish():
 
 def publish_new(bot_token):
     linked = ensure_download_links()
+    fixed = ensure_fixed_headers()
     indexed = ensure_index()
     built = build_missing_pdfs()
     posted = announce_new(bot_token) if bot_token else []
     write_sitemap()
     git_publish()
     print(
-        f"catalog: links {len(linked)}, index {len(indexed)}, "
+        f"catalog: links {len(linked)}, headers {len(fixed)}, index {len(indexed)}, "
         f"pdf {len(built)}, posted {len(posted)}"
     )
 

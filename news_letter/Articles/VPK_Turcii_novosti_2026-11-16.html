@@ -73,8 +73,8 @@ img{pointer-events:none!important;-webkit-user-drag:none!important;user-drag:non
 })();
 </script>
 <style id="site-header-v1">
-/* site-wide header, same as news_letter/index.html */
-header.top{background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
+/* site-wide header, same as news_letter/index.html. The title bar stays put. */
+header.top{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
 header.top .top-inner{max-width:42rem;margin:0 auto}
 header.top .brand{margin:0 0 2px;letter-spacing:.14em;font-size:11px;font-weight:700}
 header.top h1{margin:0;font-size:26px;font-weight:700;line-height:1.25}
@@ -84,12 +84,12 @@ header.top a.back{flex:0 0 auto;background:#fff;color:#0b1f3a;border-radius:6px;
 header.top a.back:hover{background:#eef1f5}
 header.top a.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
 header.top .meta{margin-top:6px}
-header.top .hero{margin:14px -20px -14px}
-header.top .hero img{width:100%;max-height:460px;object-fit:cover;display:block}
+.hero{margin:0}
+.hero img{width:100%;max-height:460px;object-fit:cover;display:block}
 #dpgl-guard:empty{display:none}
 body.is-index header.top .top-inner{max-width:72rem}
 @media (max-width:640px){header.top h1{font-size:20px}}
-@media print{header.top a.back{display:none}}
+@media print{header.top{position:static}header.top a.back{display:none}}
 </style>
 </head><body>
 <header class="top"><div class="top-inner"><p class="brand">DPGL NEWS</p><div class="title-row"><h1>Новости ВПК Турции — 16 ноября 2026</h1><a class="back" href="../index.html">Назад</a></div><div class="meta">Обзор событий по публикациям официальных аккаунтов турецких оборонных компаний в X (с 23:00 15.11 до 23:00 16.11.2026 по Анкаре)</div></div></header><div class="wrap">
