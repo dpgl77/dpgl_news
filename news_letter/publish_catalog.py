@@ -204,7 +204,11 @@ def ensure_index():
     folders = catalog_folders()
     files = review_files()
     current = {path.relative_to(ROOT).as_posix() for path in files}
-    hrefs = set(re.findall(r'href="((?:[^"]+/)+[^"]+\.html)"', text))
+    hrefs = {
+        href
+        for href in re.findall(r'href="((?:[^"]+/)+[^"]+\.html)"', text)
+        if not href.startswith((".", "/"))
+    }
     tabs = catalog_tabs(text)
     newest = max((path.stat().st_mtime for path in files), default=0)
     if tabs == folders and hrefs == current and newest <= index_path.stat().st_mtime + 1:
