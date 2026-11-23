@@ -45,7 +45,7 @@
 }
 </script>
 <title>Бюллетени и обзоры — DPGL NEWS</title>
-<script type="application/json" id="catalog-tabs">["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI"]</script>
+<script type="application/json" id="catalog-tabs">["Articles", "ASELSAN", "BAYKAR", "DefenceTurk", "HAVELSAN", "MKE", "SSBulten", "STM", "TEI", "VVT"]</script>
 <script>
 (function () {
   var ids = JSON.parse(document.getElementById("catalog-tabs").textContent);
@@ -117,7 +117,8 @@
   html[data-open="MKE"] [data-tab="MKE"],
   html[data-open="SSBulten"] [data-tab="SSBulten"],
   html[data-open="STM"] [data-tab="STM"],
-  html[data-open="TEI"] [data-tab="TEI"] {
+  html[data-open="TEI"] [data-tab="TEI"],
+  html[data-open="VVT"] [data-tab="VVT"] {
     background: var(--navy);
     border-color: var(--navy);
     color: #fff;
@@ -131,6 +132,7 @@
   html[data-open="SSBulten"] [data-panel="SSBulten"],
   html[data-open="STM"] [data-panel="STM"],
   html[data-open="TEI"] [data-panel="TEI"],
+  html[data-open="VVT"] [data-panel="VVT"],
   html:not([data-open]) [data-panel="Articles"] { display: block; }
   /* /catalog-css */
   .review {
@@ -191,6 +193,7 @@
     <button type="button" id="tab-SSBulten" data-tab="SSBulten" role="tab" aria-controls="panel-SSBulten">SSBulten</button>
     <button type="button" id="tab-STM" data-tab="STM" role="tab" aria-controls="panel-STM">STM</button>
     <button type="button" id="tab-TEI" data-tab="TEI" role="tab" aria-controls="panel-TEI">TEI</button>
+    <button type="button" id="tab-VVT" data-tab="VVT" role="tab" aria-controls="panel-VVT">VVT</button>
   </div>
 
   <section id="panel-Articles" data-panel="Articles" role="tabpanel" aria-labelledby="tab-Articles">
@@ -285,6 +288,288 @@
     <a class="review" href="TEI/TEI_bulten_sen-okt_2026_ru.html">
       <time datetime="2026-11-02">2 ноября 2026</time>
       <span class="name">TEI Bülten, сентябрь–октябрь 2026 — перевод и справки</span>
+    </a>
+  </section>
+  <section id="panel-VVT" data-panel="VVT" role="tabpanel" aria-labelledby="tab-VVT">
+    <a class="review" href="VVT/index.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">Каталог образцов ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/USV-12.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">USV-12 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TUNGA-X.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TUNGA-X — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TOLUN-P.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TOLUN-P — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TOLGA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TOLGA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TOGAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TOGAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TEI-TS1400.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TEI-TS1400 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TEI-TF6000.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TEI-TF6000 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TEI-TF10000.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TEI-TF10000 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/TEI-PD170.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">TEI-PD170 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/T700-TEI-701D.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">T700-TEI-701D — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SMASH-200.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">SMASH 200 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SIMSEK-2.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ŞİMŞEK-2 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SIMSEK-1.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ŞİMŞEK-1 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SAS-POD.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">SAS POD — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SANCAR.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">SANCAR — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/SAGAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">SAGAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/PIRANA-KIDA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">PİRANA KİDA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ORKA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ORKA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ONUR.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ONUR — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/NRP-LUIS-DE-CAMOES.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">N.R.P. Luís de Camões / Fernando Pessoa — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/NETA-300.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">STM NETA 300 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/NEFES.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">NEFES — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MUFS-MUFA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MUFS / MUFA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MPT-76-MH.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MPT-76 MH — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MP5-A3.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MP5-A3 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MILGEM.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MİLGEM — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MERCAN-100.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MERCAN 100 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MAM-15.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MAM-15 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/MALAMAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">MALAMAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KORKUT.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KORKUT — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KNT-76.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KNT-76 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KN-12.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KN-12 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KILIC-10.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KILIÇ 10 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KARGUFPV.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KarguFPV — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KARGU.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KARGU — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KARETTA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KARETTA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KALKAN-DIHA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KALKAN DİHA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/KAAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">KAAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/HURSAT-2.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">HÜRSAT-2 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/HURSAT-1.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">HÜRSAT-1 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/HURKUS.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">HÜRKUŞ — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/HUNTER.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">HUNTER — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/HISAR-A.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">HİSAR-A — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/GOKTURK.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">GÖKTÜRK — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/GOKBERK-10.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">GÖKBERK 10 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/FSGP.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">FSGP — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/FIRTINA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">Fırtına — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/EYEMINER.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">EYEMINER — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/EJDERHA-AD-200.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">EJDERHA / AD 200 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/E-ZPT.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">E-ZPT — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/DRONEDEF-GOKALP.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">DRONEDEF / GÖKALP — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/DERINGOZ.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">DERİNGÖZ 100M/600 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/DENIZHAN-76.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">DENİZHAN-76 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/CELIK-KUBBE.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ÇELİK KUBBE — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BULUT.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">BULUT — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BOYGA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">BOYGA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BMP-1TA-TURAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">BMP-1TA TURAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BAYRAKTAR-TB3.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">Bayraktar TB3 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BAYRAKTAR-TB2.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">Bayraktar TB2 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/BARKAN.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">BARKAN — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/AZAK.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">AZAK — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/AURA-200-G.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">AURA 200-G — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ATMACA.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ATMACA — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ANKA-3.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ANKA-3 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ALPAY-I.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ALPAY-I — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ALPAY-D.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ALPAY-D — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ALP-100.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ALP 100 — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/AKINCI.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">Bayraktar AKINCI — справка каталога ВВТ Турции</span>
+    </a>
+    <a class="review" href="VVT/ADVENT.html">
+      <time datetime="2026-11-23">23 ноября 2026</time>
+      <span class="name">ADVENT — справка каталога ВВТ Турции</span>
     </a>
   </section>
 
