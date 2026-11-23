@@ -29,26 +29,38 @@ CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 CHANNEL = "@dpgl_news"
 SITE = "https://dpgl77.github.io/dpgl_news"
 SKIP_DIRS = {"_private", "__pycache__"}
+# VVT is the equipment catalog, opened from the site root. It stays inside
+# news_letter so the published URLs stay valid, and it is not a news tab.
+CATALOG_SKIP = {"VVT"}
 
 
-def catalog_folders():
+def content_folders():
     names = [
         path.name
         for path in ROOT.iterdir()
         if path.is_dir() and path.name not in SKIP_DIRS and not path.name.startswith(".")
     ]
     names.sort(key=str.casefold)
+    return names
+
+
+def catalog_folders():
+    names = [name for name in content_folders() if name not in CATALOG_SKIP]
     if "Articles" in names:
         names.remove("Articles")
         names.insert(0, "Articles")
     return names
 
 
-def review_files():
+def html_files(folders):
     files = []
-    for name in catalog_folders():
+    for name in folders:
         files.extend(sorted((ROOT / name).glob("*.html")))
     return files
+
+
+def review_files():
+    return html_files(catalog_folders())
 
 
 def download_paragraph(token):
@@ -380,7 +392,7 @@ def public_pages():
         REPO / "sources_ranking.html",
     ]
     pages = [path for path in hubs if path.is_file()]
-    pages.extend(review_files())
+    pages.extend(html_files(content_folders()))
     return pages
 
 
