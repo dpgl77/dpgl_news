@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Update the newsletter catalog when new HTML reviews appear.
+"""Build newsletter PDFs and announce new reviews (DPGL_News_Newsletter_Gate).
 
-Used by DPGL_News_Newsletter_Gate. Mirrors prompt.txt algorithm steps 4-6
-and the git steps after them. Does not build the daily briefing or the
-source ranking. PDF conversion never writes the source HTML.
+Option A (25.11.2026): the site repo github.com/dpgl77/dpgl_news is maintained
+only by the assistant. This script no longer writes, commits or pushes
+anything in the repo. On every run it:
+  1. syncs the local clone to origin/main (git fetch + git reset --hard);
+     uncommitted local edits are saved to _private/backup first;
+  2. builds a PDF for every review / VVT page that has none, and rebuilds it
+     when the page HTML changed (sha256 of the HTML kept in catalog.json);
+  3. registers PDFs in _private/catalog.json and posts NEW reviews to the
+     channel (an updated page is not posted again).
+The «Скачать PDF» link, page headers, news_letter/index.html and sitemap.xml
+are now put by the assistant before publishing.
+
+Dry run (writes nothing; only `git fetch` updates remote refs):
+    python publish_catalog.py --dry-run
 """
-import html
+import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -15,25 +27,88 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 import register_pdf
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
-PDF_ROOT = ROOT / "_private" / "pdf"
-LOCK_PATH = ROOT / "_private" / "gate.lock"
+PRIVATE = ROOT / "_private"
+PDF_ROOT = PRIVATE / "pdf"
+BACKUP_ROOT = PRIVATE / "backup"
+LOCK_PATH = PRIVATE / "gate.lock"
 EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 CHANNEL = "@dpgl_news"
-SITE = "https://dpgl77.github.io/dpgl_news"
 SKIP_DIRS = {"_private", "__pycache__"}
 # VVT is the equipment catalog, opened from the site root. It stays inside
 # news_letter so the published URLs stay valid, and it is not a news tab.
 CATALOG_SKIP = {"VVT"}
+# PDFs built per run, so the bot keeps answering every 5 minutes. The first
+# run after the update rebuilds all PDFs once (no hash stored yet) over
+# several runs; pages whose HTML is newer than their PDF go first.
+MAX_PDF_PER_RUN = 12
+GATE_SCRIPTS = ("publish_catalog.py", "register_pdf.py", "telegram_gate.py", "register_tasks.ps1")
 
 
+def git(*args, capture=True):
+    return subprocess.run(
+        ["git", *args], cwd=REPO, capture_output=capture, text=True,
+        encoding="utf-8", errors="replace", check=False,
+    )
+
+
+# ---------------------------------------------------------------- repo sync
+def sync_repo(dry_run=False):
+    """Make the local clone equal to origin/main. Returns True when synced."""
+    fetched = git("fetch", "-q", "origin", "main")
+    if fetched.returncode != 0:
+        print("git: fetch failed, working with the local copy")
+        return False
+    own = [f"news_letter/{name}" for name in GATE_SCRIPTS]
+    if git("diff", "--quiet", "origin/main", "--", *own).returncode != 0:
+        # Never let a reset replace the running Gate with another version.
+        print("git: Gate scripts here differ from GitHub, sync skipped. "
+              "Install the same version in the repo (see README), then it syncs again.")
+        return False
+    dirty = git("status", "--porcelain", "--untracked-files=no").stdout.strip()
+    ahead = git("rev-list", "--count", "origin/main..HEAD").stdout.strip() or "0"
+    behind = git("rev-list", "--count", "HEAD..origin/main").stdout.strip() or "0"
+    if dry_run:
+        print(f"git: behind origin/main {behind}, local commits not on GitHub {ahead}")
+        if dirty:
+            print("git: local edits that reset would discard (backup is saved first):")
+            print(dirty)
+        return True
+    if dirty or ahead != "0":
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        BACKUP_ROOT.mkdir(parents=True, exist_ok=True)
+        if dirty:
+            patch = git("diff", "HEAD").stdout
+            (BACKUP_ROOT / f"local_edits_{stamp}.patch").write_text(patch, encoding="utf-8")
+            print(f"git: local edits saved to _private/backup/local_edits_{stamp}.patch")
+        if ahead != "0":
+            commits = git("format-patch", "--stdout", "origin/main..HEAD").stdout
+            (BACKUP_ROOT / f"local_commits_{stamp}.patch").write_text(commits, encoding="utf-8")
+            print(f"git: {ahead} local commit(s) saved to _private/backup/local_commits_{stamp}.patch")
+    git("checkout", "-q", "main")
+    reset = git("reset", "-q", "--hard", "origin/main")
+    if reset.returncode != 0:
+        print("git: reset failed")
+        return False
+    if behind != "0" or ahead != "0" or dirty:
+        print(f"git: synced to origin/main (+{behind} from GitHub)")
+    return True
+
+
+def tracked_html():
+    """Pages tracked in git. Untracked local files are never turned into PDFs."""
+    out = git("ls-files", "-z", "--", "news_letter").stdout
+    return {name for name in out.split("\0") if name.endswith(".html")}
+
+
+# ---------------------------------------------------------------- pages
 def content_folders():
     names = [
         path.name
@@ -78,294 +153,18 @@ def equipment_files():
 
 
 def pdf_source_files():
-    return review_files() + equipment_files()
+    tracked = tracked_html()
+    files = review_files() + equipment_files()
+    if not tracked:
+        return files
+    return [path for path in files if path.relative_to(REPO).as_posix() in tracked]
 
 
-def download_paragraph(token):
-    link = f"https://t.me/dpgl77_bot?start=nl_{token}"
-    return (
-        '<p id="dpgl-pdf-link" style="max-width:900px;margin:24px auto;padding:0 16px;'
-        'font-family:Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.4">'
-        f'<a href="{html.escape(link, quote=True)}">Скачать PDF</a></p>'
-    )
+def html_sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def ensure_download_links():
-    changed = []
-    for path in pdf_source_files():
-        with open(path, encoding="utf-8", newline="") as handle:
-            raw = handle.read()
-        if 'id="dpgl-pdf-link"' in raw:
-            continue
-        relative = path.relative_to(ROOT).as_posix()
-        paragraph = download_paragraph(register_pdf.token_for(relative))
-        if "</body>" in raw:
-            raw = raw.replace("</body>", paragraph + "</body>", 1)
-        else:
-            raw += paragraph
-        with open(path, "w", encoding="utf-8", newline="") as handle:
-            handle.write(raw)
-        changed.append(relative)
-    return changed
-
-
-HEADER_STYLE_OLD = """
-/* site-wide header, same as news_letter/index.html */
-header.top{background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
-header.top .top-inner{max-width:42rem;margin:0 auto}
-header.top .brand{margin:0 0 2px;letter-spacing:.14em;font-size:11px;font-weight:700}
-header.top h1{margin:0;font-size:26px;font-weight:700;line-height:1.25}
-header.top .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-header.top .title-row h1{flex:1 1 auto;min-width:0}
-header.top a.back{flex:0 0 auto;background:#fff;color:#0b1f3a;border-radius:6px;padding:6px 14px;font-size:15px;font-weight:700;text-decoration:none;line-height:1.2}
-header.top a.back:hover{background:#eef1f5}
-header.top a.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
-header.top .meta{margin-top:6px}
-header.top .hero{margin:14px -20px -14px}
-header.top .hero img{width:100%;max-height:460px;object-fit:cover;display:block}
-#dpgl-guard:empty{display:none}
-body.is-index header.top .top-inner{max-width:72rem}
-@media (max-width:640px){header.top h1{font-size:20px}}
-@media print{header.top a.back{display:none}}
-"""
-
-HEADER_STYLE_NEW = """
-/* site-wide header, same as news_letter/index.html. The title bar stays put. */
-header.top{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,#0b1f3a,#8b0000);color:#fff;padding:16px 20px 14px}
-header.top .top-inner{max-width:42rem;margin:0 auto}
-header.top .brand{margin:0 0 2px;letter-spacing:.14em;font-size:11px;font-weight:700}
-header.top h1{margin:0;font-size:26px;font-weight:700;line-height:1.25}
-header.top .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-header.top .title-row h1{flex:1 1 auto;min-width:0}
-header.top a.back{flex:0 0 auto;background:#fff;color:#0b1f3a;border-radius:6px;padding:6px 14px;font-size:15px;font-weight:700;text-decoration:none;line-height:1.2}
-header.top a.back:hover{background:#eef1f5}
-header.top a.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
-header.top .meta{margin-top:6px}
-.hero{margin:0}
-.hero img{width:100%;max-height:460px;object-fit:cover;display:block}
-#dpgl-guard:empty{display:none}
-body.is-index header.top .top-inner{max-width:72rem}
-@media (max-width:640px){header.top h1{font-size:20px}}
-@media print{header.top{position:static}header.top a.back{display:none}}
-"""
-
-
-def _with_newlines(text, newline):
-    return text.replace("\n", newline)
-
-
-def move_cover_out_of_header(raw):
-    """Keep the cover in the scrolling page. A sticky header must stay a short title bar."""
-    match = re.search(r'<header class="top">(.*?)</header>', raw, re.S)
-    if not match or 'class="hero"' not in match.group(1):
-        return raw
-    hero_match = re.search(r'<div class="hero">.*?</div>', match.group(1), re.S)
-    if not hero_match:
-        return raw
-    inner = match.group(1)[:hero_match.start()] + match.group(1)[hero_match.end():]
-    return (
-        raw[:match.start()]
-        + '<header class="top">'
-        + inner
-        + "</header>"
-        + hero_match.group(0)
-        + raw[match.end():]
-    )
-
-
-def ensure_fixed_headers():
-    """Pin the title bar with «Назад» on review pages. VVT is left scrolling."""
-    changed = []
-    for path in review_files():
-        with open(path, encoding="utf-8", newline="") as handle:
-            raw = handle.read()
-        if 'class="back"' not in raw or 'class="top"' not in raw:
-            continue
-        original = raw
-        newline = "\r\n" if "\r\n" in raw else "\n"
-        old_style = "<style id=\"site-header-v1\">" + _with_newlines(HEADER_STYLE_OLD, newline) + "</style>"
-        new_style = "<style id=\"site-header-v1\">" + _with_newlines(HEADER_STYLE_NEW, newline) + "</style>"
-        if old_style in raw:
-            raw = raw.replace(old_style, new_style, 1)
-        elif 'id="site-header-v1"' not in raw:
-            raw = raw.replace("</head>", new_style + "</head>", 1)
-        elif "position:sticky" not in raw:
-            raw = raw.replace(
-                "header.top{",
-                "header.top{position:sticky;top:0;z-index:40;",
-                1,
-            )
-            raw = raw.replace(
-                "@media print{header.top a.back{display:none}}",
-                "@media print{header.top{position:static}header.top a.back{display:none}}",
-                1,
-            )
-            raw = raw.replace("header.top .hero{", ".hero{")
-            raw = raw.replace("header.top .hero img{", ".hero img{")
-        raw = move_cover_out_of_header(raw)
-        if raw == original:
-            continue
-        with open(path, "w", encoding="utf-8", newline="") as handle:
-            handle.write(raw)
-        changed.append(path.relative_to(ROOT).as_posix())
-    return changed
-
-
-def card(href, iso, label, title):
-    return (
-        f'    <a class="review" href="{html.escape(href, quote=True)}">\n'
-        f'      <time datetime="{iso}">{html.escape(label)}</time>\n'
-        f'      <span class="name">{html.escape(title)}</span>\n'
-        "    </a>\n"
-    )
-
-
-def catalog_tabs(text):
-    match = re.search(
-        r'<script type="application/json" id="catalog-tabs">(.*?)</script>',
-        text,
-        re.S,
-    )
-    if not match:
-        return None
-    try:
-        value = json.loads(match.group(1))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        return None
-    return value
-
-
-def catalog_css(folders):
-    if not folders:
-        return "  [data-panel] { display: none; }\n"
-    tab_rules = ",\n".join(
-        f'  html[data-open="{name}"] [data-tab="{name}"]' for name in folders
-    )
-    panel_rules = ",\n".join(
-        f'  html[data-open="{name}"] [data-panel="{name}"]' for name in folders
-    )
-    first = folders[0]
-    return (
-        "  [data-panel] { display: none; }\n"
-        f"{tab_rules} {{\n"
-        "    background: var(--navy);\n"
-        "    border-color: var(--navy);\n"
-        "    color: #fff;\n"
-        "  }\n"
-        f"{panel_rules},\n"
-        f'  html:not([data-open]) [data-panel="{first}"] {{ display: block; }}\n'
-    )
-
-
-def render_index(text, folders, groups):
-    payload = json.dumps(folders, ensure_ascii=False)
-    text, count = re.subn(
-        r"/\* catalog-css \*/.*?/\* /catalog-css \*/",
-        "/* catalog-css */\n" + catalog_css(folders) + "  /* /catalog-css */",
-        text,
-        count=1,
-        flags=re.S,
-    )
-    if count != 1:
-        return None
-    text, count = re.subn(
-        r'(<script type="application/json" id="catalog-tabs">).*?(</script>)',
-        lambda match: match.group(1) + payload + match.group(2),
-        text,
-        count=1,
-        flags=re.S,
-    )
-    if count != 1:
-        return None
-    button_lines = []
-    section_blocks = []
-    for name in folders:
-        esc = html.escape(name, quote=True)
-        button_lines.append(
-            f'    <button type="button" id="tab-{esc}" data-tab="{esc}" role="tab" '
-            f'aria-controls="panel-{esc}">{html.escape(name)}</button>'
-        )
-        cards = [
-            card(relative, iso, label, title).rstrip("\n")
-            for iso, relative, label, title in groups[name]
-        ]
-        body = "\n" + "\n".join(cards) + "\n  " if cards else ""
-        section_blocks.append(
-            f'  <section id="panel-{esc}" data-panel="{esc}" role="tabpanel" '
-            f'aria-labelledby="tab-{esc}">{body}</section>'
-        )
-    buttons = "\n".join(button_lines)
-    sections = "\n".join(section_blocks)
-    text, count = re.subn(
-        r'(<div class="tabs" role="tablist" aria-label="Папки обзоров">).*?(</div>)',
-        lambda match: match.group(1) + "\n" + buttons + "\n  " + match.group(2),
-        text,
-        count=1,
-        flags=re.S,
-    )
-    if count != 1:
-        return None
-    text, count = re.subn(
-        r'(</div>)\s*(?:<section id="panel-[\s\S]*?</section>\s*)*(?=\s*<p class="foot">)',
-        lambda match: match.group(1) + "\n\n" + sections + "\n\n  ",
-        text,
-        count=1,
-    )
-    if count != 1:
-        return None
-    return text
-
-
-def ensure_index():
-    index_path = ROOT / "index.html"
-    data = index_path.read_bytes()
-    crlf = b"\r\n" in data
-    text = data.decode("utf-8").replace("\r\n", "\n")
-    folders = catalog_folders()
-    files = review_files()
-    current = {path.relative_to(ROOT).as_posix() for path in files}
-    hrefs = {
-        href
-        for href in re.findall(r'href="((?:[^"]+/)+[^"]+\.html)"', text)
-        if not href.startswith((".", "/"))
-    }
-    tabs = catalog_tabs(text)
-    newest = max((path.stat().st_mtime for path in files), default=0)
-    if tabs == folders and hrefs == current and newest <= index_path.stat().st_mtime + 1:
-        return []
-    groups = {name: [] for name in folders}
-    for path in files:
-        raw = path.read_text(encoding="utf-8")
-        iso, label = register_pdf.parse_date(raw, path)
-        title = register_pdf.parse_title(raw, path)
-        relative = path.relative_to(ROOT).as_posix()
-        groups[path.parent.name].append((iso, relative, label, title))
-    for name in groups:
-        groups[name].sort(key=lambda item: (item[0], item[1]), reverse=True)
-    updated = render_index(text, folders, groups)
-    if updated is None:
-        print("index: template missing, not written")
-        return []
-    if (
-        len(updated) < 2000
-        or "<!DOCTYPE html>" not in updated
-        or '<p class="foot"' not in updated
-        or "catalog-tabs" not in updated
-    ):
-        print("index: refused to write incomplete page")
-        return []
-    if updated == text:
-        return []
-    out = updated.replace("\n", "\r\n") if crlf else updated
-    index_path.write_bytes(out.encode("utf-8"))
-    added = sorted(current - hrefs)
-    removed = sorted(hrefs - current)
-    print(f"index: folders {len(folders)}, added {len(added)}, removed {len(removed)}")
-    return added or ["index.html"]
-
-
+# ---------------------------------------------------------------- PDF
 def printable_html(raw):
     raw = re.sub(
         r'<style id="dpgl-guard-style">.*?</style>\s*(?:<script(?:\s[^>]*)?>.*?</script>\s*)?',
@@ -389,23 +188,51 @@ def printable_html(raw):
     return raw.replace("</head>", extra + "</head>", 1)
 
 
-def build_missing_pdfs():
+def pdf_plan():
+    """List of (path, relative, reason, sha) that need a PDF build, in build order."""
+    state = register_pdf.load_state().get("files", {})
+    missing, changed, unhashed = [], [], []
+    for path in pdf_source_files():
+        relative = path.relative_to(ROOT).as_posix()
+        destination = PDF_ROOT / Path(relative).with_suffix(".pdf")
+        sha = html_sha256(path)
+        known = state.get(relative, {}).get("html_sha256")
+        if not destination.exists() or destination.stat().st_size <= 1000:
+            missing.append((path, relative, "new", sha))
+        elif known is None:
+            age = path.stat().st_mtime - destination.stat().st_mtime
+            unhashed.append((age, (path, relative, "no hash yet", sha)))
+        elif known != sha:
+            changed.append((path, relative, "page changed", sha))
+    unhashed.sort(key=lambda item: item[0], reverse=True)  # HTML newer than PDF first
+    return missing + changed + [item for _, item in unhashed]
+
+
+def remember_hash(relative, sha):
+    state = register_pdf.load_state()
+    files = state.setdefault("files", {})
+    files.setdefault(relative, {})["html_sha256"] = sha
+    register_pdf.save_state(state)
+
+
+def build_pdfs():
     browser = EDGE if EDGE.exists() else CHROME
     built = []
     if not browser.exists():
         print("pdf: browser not found")
         return built
-    for path in pdf_source_files():
-        relative = path.relative_to(ROOT).with_suffix(".pdf")
-        destination = PDF_ROOT / relative
-        if destination.exists() and destination.stat().st_size > 1000:
-            continue
+    plan = pdf_plan()
+    if len(plan) > MAX_PDF_PER_RUN:
+        print(f"pdf: {len(plan)} to build, {MAX_PDF_PER_RUN} this run, the rest next runs")
+    for path, relative, reason, sha in plan[:MAX_PDF_PER_RUN]:
+        destination = PDF_ROOT / Path(relative).with_suffix(".pdf")
         destination.parent.mkdir(parents=True, exist_ok=True)
+        temp_pdf = destination.with_suffix(".tmp.pdf")
         profile = Path(tempfile.mkdtemp(prefix="dpgl-pdf-"))
         temp_html = destination.with_suffix(".print.html")
         temp_html.write_text(printable_html(path.read_text(encoding="utf-8")), encoding="utf-8")
-        if destination.exists():
-            destination.unlink()
+        if temp_pdf.exists():
+            temp_pdf.unlink()
         command = [
             str(browser),
             "--headless=new",
@@ -415,25 +242,33 @@ def build_missing_pdfs():
             "--no-pdf-header-footer",
             "--virtual-time-budget=30000",
             f"--user-data-dir={profile}",
-            f"--print-to-pdf={destination}",
+            f"--print-to-pdf={temp_pdf}",
             temp_html.resolve().as_uri(),
         ]
         try:
             if LOCK_PATH.exists():
                 LOCK_PATH.touch()
             subprocess.run(command, check=False, timeout=240, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            pass
         finally:
             if temp_html.exists():
                 temp_html.unlink()
             shutil.rmtree(profile, ignore_errors=True)
-        if destination.exists() and destination.stat().st_size > 1000:
-            built.append(relative.as_posix())
-            print(f"pdf: {relative.as_posix()}")
+        if temp_pdf.exists() and temp_pdf.stat().st_size > 1000:
+            # The old PDF stays in place until the new one is ready.
+            os.replace(temp_pdf, destination)
+            remember_hash(relative, sha)
+            built.append(relative)
+            print(f"pdf ({reason}): {relative}")
         else:
-            print(f"pdf failed: {relative.as_posix()}")
+            if temp_pdf.exists():
+                temp_pdf.unlink()
+            print(f"pdf failed: {relative}")
     return built
 
 
+# ---------------------------------------------------------------- channel
 def send_channel(bot_token, text):
     payload = urllib.parse.urlencode({
         "chat_id": CHANNEL,
@@ -450,7 +285,6 @@ def send_channel(bot_token, text):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
                 body = response.read()
-            import json
             result = json.loads(body.decode("utf-8"))
             if result.get("ok"):
                 return True
@@ -471,6 +305,8 @@ def send_channel(bot_token, text):
 
 
 def announce_new(bot_token):
+    # register() keeps telegram_posted=True for pages already announced, so an
+    # updated page (new PDF) is not posted again. Only new reviews are posted.
     pending = register_pdf.register(False) or []
     posted = []
     for item in pending:
@@ -480,159 +316,46 @@ def announce_new(bot_token):
     return posted
 
 
-def page_url(path):
-    rel = path.relative_to(REPO).as_posix()
-    if rel == "index.html":
-        return SITE + "/"
-    if rel.endswith("/index.html"):
-        rel = rel[: -len("index.html")]
-    return SITE + "/" + urllib.parse.quote(rel, safe="/")
-
-
-def lastmod(path):
-    rel = path.relative_to(REPO).as_posix()
-    status = subprocess.run(
-        ["git", "status", "--porcelain", "--", rel],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
-    if not status:
-        committed = subprocess.run(
-            ["git", "log", "-1", "--format=%cs", "--", rel],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip()
-        if committed:
-            return committed
-    return date.fromtimestamp(path.stat().st_mtime).isoformat()
-
-
-def public_pages():
-    hubs = [
-        REPO / "index.html",
-        ROOT / "index.html",
-        REPO / "sources_ranking.html",
-    ]
-    pages = [path for path in hubs if path.is_file()]
-    pages.extend(html_files(content_folders()))
-    return pages
-
-
-def write_sitemap():
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ]
-    for path in public_pages():
-        loc = html.escape(page_url(path), quote=False)
-        lines.append("  <url>")
-        lines.append(f"    <loc>{loc}</loc>")
-        lines.append(f"    <lastmod>{lastmod(path)}</lastmod>")
-        lines.append("  </url>")
-    lines.append("</urlset>")
-    text = "\n".join(lines) + "\n"
-    target = REPO / "sitemap.xml"
-    if target.is_file() and target.read_text(encoding="utf-8") == text:
-        return False
-    target.write_text(text, encoding="utf-8", newline="\n")
-    print(f"sitemap: {len(public_pages())} urls")
-    return True
-
-
-def commit_message(names):
-    today = date.today().isoformat()
-    paths = [name.replace("\\", "/") for name in names]
-    news = [path for path in paths if path.startswith("news_letter/")]
-    ranking = [path for path in paths if path == "sources_ranking.html"]
-    other = [path for path in paths if path not in news and path not in ranking]
-    if paths and not other and not news:
-        return f"Update source ranking {today}"
-    if paths and not other and not ranking:
-        return f"News articles {today}"
-    if paths and not other and news and ranking:
-        return f"News articles and source ranking {today}"
-    return f"Update dpgl_news {today}"
-
-
-def git_publish():
-    subprocess.run(["git", "add", "-A"], cwd=REPO, check=False)
-    subprocess.run(
-        ["git", "reset", "-q", "--", "news_letter/_private", "news_letter/__pycache__"],
-        cwd=REPO,
-        check=False,
-    )
-    staged_raw = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "-z"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout
-    staged = []
-    for name in staged_raw.split("\0"):
-        if not name:
-            continue
-        parts = name.replace("\\", "/").split("/")
-        if "_private" in parts or "__pycache__" in parts or name.endswith(".pyc"):
-            subprocess.run(["git", "reset", "-q", "--", name], cwd=REPO, check=False)
-            continue
-        staged.append(name)
-    if not staged:
-        print("git: nothing to commit")
-        return False
-    message = commit_message(staged)
-    committed = subprocess.run(
-        ["git", "commit", "-m", message],
-        cwd=REPO,
-        check=False,
-    )
-    if committed.returncode != 0:
-        print("git: commit failed")
-        return False
-    pushed = subprocess.run(["git", "push", "origin", "main"], cwd=REPO, check=False)
-    if pushed.returncode != 0:
-        print("git: push failed, rebase once")
-        pulled = subprocess.run(
-            ["git", "pull", "--rebase", "origin", "main"],
-            cwd=REPO,
-            check=False,
-        )
-        if pulled.returncode != 0:
-            subprocess.run(["git", "rebase", "--abort"], cwd=REPO, check=False)
-            print("git: rebase failed")
-            return False
-        pushed = subprocess.run(["git", "push", "origin", "main"], cwd=REPO, check=False)
-    print(f"git: push {pushed.returncode} {message}")
-    return pushed.returncode == 0
-
-
+# ---------------------------------------------------------------- entry points
 def publish_new(bot_token):
-    linked = ensure_download_links()
-    fixed = ensure_fixed_headers()
-    indexed = ensure_index()
-    built = build_missing_pdfs()
+    synced = sync_repo()
+    built = build_pdfs()
     posted = announce_new(bot_token) if bot_token else []
-    write_sitemap()
-    git_publish()
-    print(
-        f"catalog: links {len(linked)}, headers {len(fixed)}, index {len(indexed)}, "
-        f"pdf {len(built)}, posted {len(posted)}"
-    )
+    print(f"catalog: synced {synced}, pdf {len(built)}, posted {len(posted)}")
+
+
+def dry_run():
+    print("DRY RUN: nothing is written, built, posted or committed")
+    sync_repo(dry_run=True)
+    print("note: the list below is for the current local files; a real run resets them to origin/main first")
+    plan = pdf_plan()
+    print(f"pdf: {len(plan)} to build ({MAX_PDF_PER_RUN} per run)")
+    for _path, relative, reason, _sha in plan:
+        print(f"  {reason}: {relative}")
+    state = register_pdf.load_state().get("files", {})
+    new = [
+        path.relative_to(ROOT).as_posix() for path in pdf_source_files()
+        if path.parent.name != "VVT"
+        and not state.get(path.relative_to(ROOT).as_posix(), {}).get("telegram_posted")
+    ]
+    print(f"channel: {len(new)} new review(s) would be posted after their PDF is built")
+    for relative in new:
+        print(f"  {relative}")
+    print(f"git: the Gate does not commit or push (option A)")
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sync-index", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="show what a run would do")
+    parser.add_argument("--sync-index", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
-    if not args.sync_index:
-        raise SystemExit("usage: publish_catalog.py --sync-index")
-    changed = ensure_index()
-    print("index: updated" if changed else "index: unchanged")
+    if args.sync_index:
+        raise SystemExit("--sync-index removed: news_letter/index.html is maintained by the assistant (option A)")
+    if args.dry_run:
+        dry_run()
+        return
+    raise SystemExit("usage: publish_catalog.py --dry-run   (normal runs start from telegram_gate.py)")
 
 
 if __name__ == "__main__":
