@@ -36,6 +36,7 @@ header.top {
     background: linear-gradient(135deg, var(--navy), var(--burgundy));
     color: #fff;
     padding: 14px 20px 12px;
+    border-bottom: 2px solid #c69b4b;
 }
 header.top .top-inner { max-width: 1400px; margin: 0 auto; }
 header.top .brand { margin: 0 0 2px; letter-spacing: .14em; font-size: 11px; font-weight: 700; }
@@ -114,7 +115,7 @@ header.top h1 { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.25;
     align-items: center;
 }
 .tab-btn:hover { border-color: var(--navy); }
-.tab-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.tab-btn.active { background: var(--navy); border-color: #c69b4b; color: #fff; box-shadow: inset 0 -2px 0 #c69b4b; }
 .tabs-sep { flex: 0 0 auto; width: 1px; align-self: stretch; background: var(--line); margin: 4px 2px; }
 /* links to site sections (reviews, VVT, VTS, ranking): burgundy outline */
 .ranking-link { border-color: #e2c4c4; color: var(--burgundy); background: #fff; }
@@ -166,4 +167,15 @@ body.dark .tabs-sep { background: #343a40; }
     .tabs-links .tab-btn { font-size: 12.5px; min-height: 30px; padding: 4px 10px; }
     .tab-btn { font-size: 13px; padding: 5px 10px; min-height: 32px; }
     .tab-content { border-radius: 10px; }
+}
+
+/* 2B-2 emblem lockup (26.11.2026) */
+header.top .brand-lockup { display: flex; align-items: center; gap: 12px; min-width: 0; }
+header.top a.emblem { flex: 0 0 auto; display: block; line-height: 0; border-radius: 4px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) drop-shadow(0 0 8px rgba(198,155,75,.4)); }
+header.top a.emblem:focus-visible { outline: 2px solid #c69b4b; outline-offset: 3px; }
+header.top a.emblem img { display: block; height: 52px; width: auto; }
+header.top .brand-text { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 640px) {
+    header.top .brand-lockup { gap: 10px; }
+    header.top a.emblem img { height: 40px; }
 }
