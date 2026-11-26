@@ -1,11 +1,12 @@
-const CACHE_NAME = 'dpgl-news-v3';
+const CACHE_NAME = 'dpgl-news-v4';
 const SHELL = [
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './img/dpgl77-shield.png'
 ];
 
 self.addEventListener('install', event => {
