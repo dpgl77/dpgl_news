@@ -179,3 +179,6 @@ header.top .brand-text { flex: 1 1 auto; min-width: 0; }
     header.top .brand-lockup { gap: 10px; }
     header.top a.emblem img { height: 40px; }
 }
+
+/* Hover fullscreen preview for emblem */
+header.top a.emblem{position:relative}header.top a.emblem .emblem-zoom{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,31,58,.78);backdrop-filter:blur(4px);opacity:0;visibility:hidden;pointer-events:none;z-index:9999;transition:opacity .22s ease,visibility .22s ease}header.top a.emblem .emblem-zoom img{width:auto;height:min(82vh,82vw);max-height:760px;max-width:90vw;filter:drop-shadow(0 12px 36px rgba(0,0,0,.65)) drop-shadow(0 0 24px rgba(198,155,75,.55));transform:scale(.85);transition:transform .24s cubic-bezier(.2,.8,.2,1)}@media (hover:hover){header.top a.emblem:hover .emblem-zoom,header.top a.emblem:focus-visible .emblem-zoom{opacity:1;visibility:visible}header.top a.emblem:hover .emblem-zoom img,header.top a.emblem:focus-visible .emblem-zoom img{transform:scale(1)}}
