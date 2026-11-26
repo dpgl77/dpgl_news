@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="style.css">
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#0b1f3a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -59,66 +59,69 @@
     </script>
 </head>
 <body>
+<header class="top">
+  <div class="top-inner">
+    <p class="brand">DPGL NEWS</p>
+    <div class="title-row">
+      <h1>DPGL NEWS Inoreader</h1>
+      <div class="header-tools">
+        <div class="timer-box"><span class="timer-label">Обновление через:</span><span id="countdown" class="timer-countdown">30:00</span></div>
+        <button id="theme-toggle" class="theme-btn" type="button" aria-label="Переключить тему">🌙</button>
+      </div>
+    </div>
+    <div class="tg-banner"><div class="tg-text">📢 Читайте аналитику там, где удобно! <a href="https://t.me/dpgl_news" target="_blank" rel="noopener noreferrer" style="color: white; font-weight: bold; text-decoration: underline;">Подпишитесь на наш канал.</a></div></div>
+  </div>
+</header>
+
 <div class="container">
-    <div class="tg-banner">
-        <div class="tg-text">📢 Читайте аналитику там, где удобно! <a href="https://t.me/dpgl_news" target="_blank" rel="noopener noreferrer" style="color: white; font-weight: bold; text-decoration: underline;">Подпишитесь на наш канал.</a></div>
-    </div>
-    <div class="header-area">
-        <h1>DPGL NEWS Inoreader</h1>
-        <div class="timer-box">
-            <span>Обновление через:</span>
-            <span id="countdown" class="timer-countdown">30:00</span>
-        </div>
-        <button id="theme-toggle" class="theme-btn">🌙</button>
-    </div>
+    <nav class="tabs-nav tabs-feeds" aria-label="Ленты Inoreader">
+        <button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag2')">Recep Tayyip Erdoğan</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag3')">Hakan Fidan</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag8')">Yaşar Güler</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag9')">İbrahim Kalın</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag4')">Ukraine</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag5')">Syria</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag6')">Iran</button>
+        <button class="tab-btn" onclick="openTab(event, 'tag7')">All published</button>
+    </nav>
+    <nav class="tabs-nav tabs-links" aria-label="Разделы сайта">
+        <a class="tab-btn ranking-link" href="news_letter/index.html">Новости ВПК Турции</a>
+        <a class="tab-btn ranking-link" href="news_letter/VVT/index.html">Каталог ВВТ Турции</a>
+        <a class="tab-btn ranking-link" href="news_letter/VTS/index.html">ВТС Турции</a>
+        <a class="tab-btn ranking-link" href="sources_ranking.html">Рейтинг источников</a>
+    </nav>
 
     <div class="main-layout">
         <div class="content-area">
             <div id="tag1" class="tab-content active">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Turkiye" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Turkiye/view/html?cs=m"></iframe>
             </div>
             <div id="tag2" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Recep%20Tayyip%20Erdo%C4%9Fan/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Recep Tayyip Erdoğan" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Recep%20Tayyip%20Erdo%C4%9Fan/view/html?cs=m"></iframe>
             </div>
             <div id="tag3" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Hakan%20Fidan/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Hakan Fidan" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Hakan%20Fidan/view/html?cs=m"></iframe>
             </div>
             <div id="tag4" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Ukraine" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Ukraine/view/html?cs=m"></iframe>
             </div>
             <div id="tag5" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Syria" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Syria/view/html?cs=m"></iframe>
             </div>
             <div id="tag6" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Iran/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Iran" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Iran/view/html?cs=m"></iframe>
             </div>
             <div id="tag8" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/Ya%C5%9Far%20G%C3%BCler/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: Yaşar Güler" data-src="https://www.inoreader.com/stream/user/1003999326/tag/Ya%C5%9Far%20G%C3%BCler/view/html?cs=m"></iframe>
             </div>
             <div id="tag9" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/%C4%B0brahim%20Kal%C4%B1n/view/html?cs=m"></iframe>
+                <iframe title="Лента Inoreader: İbrahim Kalın" data-src="https://www.inoreader.com/stream/user/1003999326/tag/%C4%B0brahim%20Kal%C4%B1n/view/html?cs=m"></iframe>
             </div>
 
             <div id="tag7" class="tab-content">
-                <iframe data-src="https://www.inoreader.com/stream/user/1003999326/tag/All%20published/view/html?cs=m&n=100"></iframe>
+                <iframe title="Лента Inoreader: All published" data-src="https://www.inoreader.com/stream/user/1003999326/tag/All%20published/view/html?cs=m&n=100"></iframe>
             </div>
-        </div>
-
-        <div class="sidebar-area">
-            <ul class="tabs-nav">
-                <li><button class="tab-btn active" onclick="openTab(event, 'tag1')">Turkiye</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag2')">Recep Tayyip Erdoğan</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag3')">Hakan Fidan</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag8')">Yaşar Güler</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag9')">İbrahim Kalın</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag4')">Ukraine</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag5')">Syria</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag6')">Iran</button></li>
-                <li><button class="tab-btn" onclick="openTab(event, 'tag7')">All published</button></li>
-                <li><a class="tab-btn ranking-link" href="news_letter/index.html">Новости ВПК Турции</a></li>
-                <li><a class="tab-btn ranking-link" href="news_letter/VVT/index.html">Каталог ВВТ Турции</a></li>
-                <li><a class="tab-btn ranking-link" href="sources_ranking.html">Рейтинг источников</a></li>
-            </ul>
         </div>
     </div>
 </div>

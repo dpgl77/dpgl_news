@@ -6,7 +6,7 @@ only by the assistant. This script no longer writes, commits or pushes
 anything in the repo. On every run it:
   1. syncs the local clone to origin/main (git fetch + git reset --hard);
      uncommitted local edits are saved to _private/backup first;
-  2. builds a PDF for every review / VVT page that has none, and rebuilds it
+  2. builds a PDF for every review / VVT / VTS page that has none, and rebuilds it
      when the page HTML changed (sha256 of the HTML kept in catalog.json);
   3. registers PDFs in _private/catalog.json and posts NEW reviews to the
      channel (an updated page is not posted again).
@@ -42,9 +42,10 @@ EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 CHANNEL = "@dpgl_news"
 SKIP_DIRS = {"_private", "__pycache__"}
-# VVT is the equipment catalog, opened from the site root. It stays inside
-# news_letter so the published URLs stay valid, and it is not a news tab.
-CATALOG_SKIP = {"VVT"}
+# VVT (equipment catalog) and VTS (military-technical cooperation by country)
+# are catalogs opened from the site root. They stay inside news_letter so the
+# published URLs stay valid; they are not news tabs and are never announced.
+CATALOG_SKIP = {"VVT", "VTS"}
 # PDFs built per run, so the bot keeps answering every 5 minutes. The first
 # run after the update rebuilds all PDFs once (no hash stored yet) over
 # several runs; pages whose HTML is newer than their PDF go first.
@@ -335,7 +336,7 @@ def dry_run():
     state = register_pdf.load_state().get("files", {})
     new = [
         path.relative_to(ROOT).as_posix() for path in pdf_source_files()
-        if path.parent.name != "VVT"
+        if path.parent.name not in CATALOG_SKIP
         and not state.get(path.relative_to(ROOT).as_posix(), {}).get("telegram_posted")
     ]
     print(f"channel: {len(new)} new review(s) would be posted after their PDF is built")

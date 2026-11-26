@@ -4,8 +4,8 @@
   "description": "Агрегатор новостных лент и аналитики",
   "start_url": "/dpgl_news/",
   "display": "standalone",
-  "background_color": "#f8f9fa",
-  "theme_color": "#007bff",
+  "background_color": "#eef1f5",
+  "theme_color": "#0b1f3a",
   "icons": [
     {
       "src": "icon-192.png",

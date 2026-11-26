@@ -121,9 +121,9 @@ def register(initial_posted):
         title = parse_title(raw, html_path)
         record = files.get(relative, {})
         posted = bool(record.get("telegram_posted")) or initial_posted
-        # Equipment pages use the same bot link, but they are not reviews
+        # Equipment (VVT) and cooperation (VTS) pages use the same bot link, but they are not reviews
         # and must not be announced in the channel.
-        if html_path.parent.name == "VVT":
+        if html_path.parent.name in ("VVT", "VTS"):
             posted = True
         record.update({
             "title": title,
