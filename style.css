@@ -222,3 +222,25 @@ header.top a.emblem .emblem-zoom img {
         transform: scale(1);
     }
 }
+
+/* Floating bouncing buttons */
+.tabs-nav.floating-arena {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    padding: 0;
+}
+.tabs-feeds.floating-arena {
+    height: 86px;
+}
+.tabs-links.floating-arena {
+    height: 68px;
+}
+.tabs-nav.floating-arena .tab-btn.floating-btn {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    will-change: transform;
+    user-select: none;
+}
