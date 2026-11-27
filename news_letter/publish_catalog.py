@@ -163,8 +163,10 @@ def pdf_source_files():
 
 # Bump this string to force a rebuild of every stored PDF after a change
 # in printable_html that is not visible in the source HTML (27.11.2026:
-# hide «Скачать PDF» and reserve a bottom margin for the send-time footer).
-PDF_BUILD_SALT = b"pdf-v2-no-download-link-2026-11-27"
+# hide «Скачать PDF», reserve a bottom margin for the send-time footer,
+# and strip the Yandex.Metrika counter so headless Edge/Chrome does not
+# wait on mc.yandex.ru when printing).
+PDF_BUILD_SALT = b"pdf-v3-strip-metrika-2026-11-27"
 
 
 def html_sha256(path):
@@ -173,6 +175,14 @@ def html_sha256(path):
 
 # ---------------------------------------------------------------- PDF
 def printable_html(raw):
+    # Drop the live-site Metrika tag: headless print must not fetch mc.yandex.ru.
+    raw = re.sub(
+        r"<!-- Yandex\.Metrika counter -->.*?<!-- /Yandex\.Metrika counter -->\s*",
+        "",
+        raw,
+        count=1,
+        flags=re.S,
+    )
     raw = re.sub(
         r'<style id="dpgl-guard-style">.*?</style>\s*(?:<script(?:\s[^>]*)?>.*?</script>\s*)?',
         "",
