@@ -24,8 +24,12 @@ STATE_PATH = PRIVATE / "catalog.json"
 TOKEN_PATH = PRIVATE / "bot_token.txt"
 OFFSET_PATH = PRIVATE / "updates_offset.txt"
 LOCK_PATH = PRIVATE / "gate.lock"
+LIMITS_PATH = PRIVATE / "download_limits.json"
 CHANNEL = "@dpgl_news"
 SUBSCRIBED = {"creator", "administrator", "member"}
+UNLIMITED_ROLES = {"creator", "administrator"}
+WEEKLY_LIMIT = 3
+WEEKLY_WINDOW_SEC = 7 * 24 * 3600
 SITE_URL = "https://dpgl77.github.io/dpgl_news/"
 WATERMARK_OPACITY = 0.08
 # Telegram Bot API never sends a user's phone number with a normal message.
@@ -259,12 +263,87 @@ def send_document(bot_token, chat_id, pdf_path, caption, user=None):
         raise RuntimeError(result.get("description") or "sendDocument")
 
 
-def subscribed(bot_token, user_id):
+def member_status(bot_token, user_id):
     member = api(bot_token, "getChatMember", {"chat_id": CHANNEL, "user_id": user_id})
     status = member.get("status")
     if status in SUBSCRIBED:
-        return True
-    return status == "restricted" and bool(member.get("is_member"))
+        return status
+    if status == "restricted" and bool(member.get("is_member")):
+        return "member"
+    return None
+
+
+def subscribed(bot_token, user_id):
+    return member_status(bot_token, user_id) is not None
+
+
+# ------------------------------------------------------------ weekly limits
+def _load_limits(path=LIMITS_PATH):
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_limits(data, path=LIMITS_PATH):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def check_weekly_limit(user_id, file_token, now=None, path=LIMITS_PATH):
+    """Return (allowed, remaining_after, next_available_ts).
+
+    Keyed by immutable numeric Telegram user_id, so unsubscribing/resubscribing
+    or changing @username never resets the 7-day rolling quota.
+    Re-downloading a file already fetched in the current 7-day window does not
+    consume an additional slot.
+    """
+    now = time.time() if now is None else float(now)
+    cutoff = now - WEEKLY_WINDOW_SEC
+    data = _load_limits(path)
+    entries = [e for e in data.get(str(user_id), []) if isinstance(e, dict) and e.get("ts", 0) > cutoff]
+
+    by_token = {}
+    for e in entries:
+        tok = e.get("token")
+        ts = float(e.get("ts", 0))
+        if tok and (tok not in by_token or ts < by_token[tok]):
+            by_token[tok] = ts
+
+    if file_token in by_token:
+        remaining = max(0, WEEKLY_LIMIT - len(by_token))
+        return True, remaining, None
+
+    if len(by_token) >= WEEKLY_LIMIT:
+        oldest_ts = min(by_token.values())
+        return False, 0, oldest_ts + WEEKLY_WINDOW_SEC
+
+    remaining_after = max(0, WEEKLY_LIMIT - (len(by_token) + 1))
+    return True, remaining_after, None
+
+
+def record_download(user_id, file_token, now=None, path=LIMITS_PATH):
+    """Record a successful PDF delivery for user_id and prune expired entries."""
+    now = time.time() if now is None else float(now)
+    cutoff = now - WEEKLY_WINDOW_SEC
+    data = _load_limits(path)
+    uid = str(user_id)
+    entries = [e for e in data.get(uid, []) if isinstance(e, dict) and e.get("ts", 0) > cutoff]
+    if not any(e.get("token") == file_token for e in entries):
+        entries.append({"token": file_token, "ts": now})
+    data[uid] = entries
+    for k in list(data.keys()):
+        kept = [e for e in data[k] if isinstance(e, dict) and e.get("ts", 0) > cutoff]
+        if kept:
+            data[k] = kept
+        else:
+            del data[k]
+    _save_limits(data, path)
 
 
 def read_offset():
@@ -311,7 +390,8 @@ def handle(bot_token, message):
             "text": "Этот обзор не найден. Откройте свежую ссылку из канала @dpgl_news.",
         })
         return
-    if not subscribed(bot_token, user["id"]):
+    status = member_status(bot_token, user["id"])
+    if not status:
         api(bot_token, "sendMessage", {
             "chat_id": chat["id"],
             "text": (
@@ -322,8 +402,24 @@ def handle(bot_token, message):
             ),
         })
         return
+    file_token = record.get("token") or payload[3:]
+    is_admin = status in UNLIMITED_ROLES
+    if not is_admin:
+        allowed, remaining, next_ts = check_weekly_limit(user["id"], file_token)
+        if not allowed:
+            when_str = datetime.fromtimestamp(next_ts).strftime("%d.%m.%Y в %H:%M")
+            api(bot_token, "sendMessage", {
+                "chat_id": chat["id"],
+                "text": (
+                    f"Вы уже достигли недельного лимита скачивания ({WEEKLY_LIMIT} PDF за 7 дней).\n"
+                    f"Следующий файл станет доступен {when_str}."
+                ),
+            })
+            return
     caption = f"<b>{record['title']}</b>\n{record['date_label']}"
     send_document(bot_token, chat["id"], record["pdf"], caption[:1024], user=user)
+    if not is_admin:
+        record_download(user["id"], file_token)
 
 
 def main():
