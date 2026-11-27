@@ -28,8 +28,8 @@ LIMITS_PATH = PRIVATE / "download_limits.json"
 CHANNEL = "@dpgl_news"
 SUBSCRIBED = {"creator", "administrator", "member"}
 UNLIMITED_ROLES = {"creator", "administrator"}
-WEEKLY_LIMIT = 3
-WEEKLY_WINDOW_SEC = 7 * 24 * 3600
+DAILY_LIMIT = 3
+DAILY_WINDOW_SEC = 24 * 3600
 SITE_URL = "https://dpgl77.github.io/dpgl_news/"
 WATERMARK_OPACITY = 0.08
 # Telegram Bot API never sends a user's phone number with a normal message.
@@ -277,7 +277,7 @@ def subscribed(bot_token, user_id):
     return member_status(bot_token, user_id) is not None
 
 
-# ------------------------------------------------------------ weekly limits
+# ------------------------------------------------------------ daily limits
 def _load_limits(path=LIMITS_PATH):
     if not path.exists():
         return {}
@@ -295,16 +295,16 @@ def _save_limits(data, path=LIMITS_PATH):
     os.replace(tmp, path)
 
 
-def check_weekly_limit(user_id, file_token, now=None, path=LIMITS_PATH):
+def check_daily_limit(user_id, file_token, now=None, path=LIMITS_PATH):
     """Return (allowed, remaining_after, next_available_ts).
 
     Keyed by immutable numeric Telegram user_id, so unsubscribing/resubscribing
-    or changing @username never resets the 7-day rolling quota.
-    Re-downloading a file already fetched in the current 7-day window does not
+    or changing @username never resets the 24-hour rolling quota.
+    Re-downloading a file already fetched in the current 24-hour window does not
     consume an additional slot.
     """
     now = time.time() if now is None else float(now)
-    cutoff = now - WEEKLY_WINDOW_SEC
+    cutoff = now - DAILY_WINDOW_SEC
     data = _load_limits(path)
     entries = [e for e in data.get(str(user_id), []) if isinstance(e, dict) and e.get("ts", 0) > cutoff]
 
@@ -316,21 +316,21 @@ def check_weekly_limit(user_id, file_token, now=None, path=LIMITS_PATH):
             by_token[tok] = ts
 
     if file_token in by_token:
-        remaining = max(0, WEEKLY_LIMIT - len(by_token))
+        remaining = max(0, DAILY_LIMIT - len(by_token))
         return True, remaining, None
 
-    if len(by_token) >= WEEKLY_LIMIT:
+    if len(by_token) >= DAILY_LIMIT:
         oldest_ts = min(by_token.values())
-        return False, 0, oldest_ts + WEEKLY_WINDOW_SEC
+        return False, 0, oldest_ts + DAILY_WINDOW_SEC
 
-    remaining_after = max(0, WEEKLY_LIMIT - (len(by_token) + 1))
+    remaining_after = max(0, DAILY_LIMIT - (len(by_token) + 1))
     return True, remaining_after, None
 
 
 def record_download(user_id, file_token, now=None, path=LIMITS_PATH):
     """Record a successful PDF delivery for user_id and prune expired entries."""
     now = time.time() if now is None else float(now)
-    cutoff = now - WEEKLY_WINDOW_SEC
+    cutoff = now - DAILY_WINDOW_SEC
     data = _load_limits(path)
     uid = str(user_id)
     entries = [e for e in data.get(uid, []) if isinstance(e, dict) and e.get("ts", 0) > cutoff]
@@ -405,18 +405,20 @@ def handle(bot_token, message):
     file_token = record.get("token") or payload[3:]
     is_admin = status in UNLIMITED_ROLES
     if not is_admin:
-        allowed, remaining, next_ts = check_weekly_limit(user["id"], file_token)
+        allowed, remaining, next_ts = check_daily_limit(user["id"], file_token)
         if not allowed:
             when_str = datetime.fromtimestamp(next_ts).strftime("%d.%m.%Y в %H:%M")
             api(bot_token, "sendMessage", {
                 "chat_id": chat["id"],
                 "text": (
-                    f"Вы уже достигли недельного лимита скачивания ({WEEKLY_LIMIT} PDF за 7 дней).\n"
+                    f"По условиям подписки можно скачать не более {DAILY_LIMIT} PDF-файлов в сутки (за последние 24 часа лимит исчерпан).\n"
                     f"Следующий файл станет доступен {when_str}."
                 ),
             })
             return
     caption = f"<b>{record['title']}</b>\n{record['date_label']}"
+    if not is_admin:
+        caption += f"\n<i>Лимит по подписке: не более {DAILY_LIMIT} PDF в сутки (осталось сегодня: {remaining}).</i>"
     send_document(bot_token, chat["id"], record["pdf"], caption[:1024], user=user)
     if not is_admin:
         record_download(user["id"], file_token)
