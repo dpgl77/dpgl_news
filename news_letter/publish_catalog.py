@@ -161,8 +161,14 @@ def pdf_source_files():
     return [path for path in files if path.relative_to(REPO).as_posix() in tracked]
 
 
+# Bump this string to force a rebuild of every stored PDF after a change
+# in printable_html that is not visible in the source HTML (27.11.2026:
+# hide «Скачать PDF» and reserve a bottom margin for the send-time footer).
+PDF_BUILD_SALT = b"pdf-v2-no-download-link-2026-11-27"
+
+
 def html_sha256(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(PDF_BUILD_SALT + path.read_bytes()).hexdigest()
 
 
 # ---------------------------------------------------------------- PDF
@@ -178,13 +184,18 @@ def printable_html(raw):
     raw = re.sub(r'<script id="protect-js">.*?</script>\s*', "", raw, count=1, flags=re.S)
     raw = re.sub(r'<div id="dpgl-guard">.*?</div>\s*', "", raw, count=1, flags=re.S)
     raw = re.sub(r'<div id="dpgl-print-only">.*?</div>\s*', "", raw, count=1, flags=re.S)
+    # The live HTML keeps the «Скачать PDF» button; it must not appear in the PDF.
+    raw = re.sub(r'<style id="dpgl-pdf-link-style">.*?</style>\s*', "", raw, count=1, flags=re.S)
+    raw = re.sub(r'<p id="dpgl-pdf-link"[^>]*>.*?</p>\s*', "", raw, count=1, flags=re.S)
     raw = raw.replace(
         "@media print{html,body{display:none!important;visibility:hidden!important}}",
         "",
     )
     extra = (
         "<style>@media print { html, body { display: block !important; visibility: visible !important; } "
-        "* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }</style>"
+        "* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } "
+        "#dpgl-pdf-link { display: none !important; } }"
+        "@page { margin-bottom: 16mm; }</style>"
     )
     return raw.replace("</head>", extra + "</head>", 1)
 
