@@ -182,6 +182,14 @@
   html[data-open="STM"] [data-panel="STM"],
   html[data-open="TEI"] [data-panel="TEI"],
   html:not([data-open]) [data-panel="Articles"] { display: block; }
+  .review .pdf-dl {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    margin-left: 0.4em;
+  }
   /* /catalog-css */
   .wrap > [data-panel] {
     flex: 1 1 auto;
@@ -272,6 +280,10 @@ header.top .brand-text{flex:1 1 auto;min-width:0}
   </div>
 
   <section id="panel-Articles" data-panel="Articles" role="tabpanel" aria-labelledby="tab-Articles">
+    <a class="review" href="Articles/VPK_Turcii_novosti_2026-11-27.html">
+      <time datetime="2026-11-27">27 ноября 2026</time>
+      <span class="name">Новости ВПК Турции — 27 ноября 2026</span>
+    </a>
     <a class="review" href="Articles/VPK_Turcii_novosti_2026-11-26.html">
       <time datetime="2026-11-26">26 ноября 2026</time>
       <span class="name">Новости ВПК Турции — 26 ноября 2026</span>
