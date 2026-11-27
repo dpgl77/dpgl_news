@@ -8,9 +8,18 @@ Before sendDocument the PDF is watermarked in memory (the file in _private
 is never modified): a faint DPGL77 shield on every page and a footer with
 the site URL plus «специально для @username (ID …) · DD.MM.YYYY».
 Needs pymupdf:  pip install pymupdf
+
+Successful subscriber downloads are counted in _private/download_stats.json
+(and a PII-free _private/download_counts.json). The channel owner gets a daily
+summary at 23:00 local time, or immediately via /stats in a private chat.
+The PII-free counts file is force-pushed to the isolated origin/stats branch
+via git plumbing (working tree, index and main are never touched).
 """
 import os
+import hashlib
+import html
 import json
+import subprocess
 import time
 import uuid
 import urllib.parse
@@ -25,6 +34,17 @@ TOKEN_PATH = PRIVATE / "bot_token.txt"
 OFFSET_PATH = PRIVATE / "updates_offset.txt"
 LOCK_PATH = PRIVATE / "gate.lock"
 LIMITS_PATH = PRIVATE / "download_limits.json"
+STATS_PATH = PRIVATE / "download_stats.json"
+COUNTS_PATH = PRIVATE / "download_counts.json"
+OWNER_CHAT_PATH = PRIVATE / "owner_chat_id.txt"
+PUSHED_SHA_PATH = PRIVATE / "stats_pushed_sha.txt"
+REPO = ROOT.parent
+STATS_BRANCH = "stats"
+STATS_REPO_PATH = "news_letter/download_counts.json"
+REPORT_HOUR = 23
+REPORT_MINUTE = 0
+REPORT_TOP_N = 25
+REPORT_CHAR_LIMIT = 3900
 CHANNEL = "@dpgl_news"
 SUBSCRIBED = {"creator", "administrator", "member"}
 UNLIMITED_ROLES = {"creator", "administrator"}
@@ -278,7 +298,8 @@ def subscribed(bot_token, user_id):
 
 
 # ------------------------------------------------------------ daily limits
-def _load_limits(path=LIMITS_PATH):
+def _load_limits(path=None):
+    path = LIMITS_PATH if path is None else path
     if not path.exists():
         return {}
     try:
@@ -288,14 +309,15 @@ def _load_limits(path=LIMITS_PATH):
         return {}
 
 
-def _save_limits(data, path=LIMITS_PATH):
+def _save_limits(data, path=None):
+    path = LIMITS_PATH if path is None else path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, path)
 
 
-def check_daily_limit(user_id, file_token, now=None, path=LIMITS_PATH):
+def check_daily_limit(user_id, file_token, now=None, path=None):
     """Return (allowed, remaining_after, next_available_ts).
 
     Keyed by immutable numeric Telegram user_id, so unsubscribing/resubscribing
@@ -304,6 +326,7 @@ def check_daily_limit(user_id, file_token, now=None, path=LIMITS_PATH):
     consume an additional slot.
     """
     now = time.time() if now is None else float(now)
+    path = LIMITS_PATH if path is None else path
     cutoff = now - DAILY_WINDOW_SEC
     data = _load_limits(path)
     entries = [e for e in data.get(str(user_id), []) if isinstance(e, dict) and e.get("ts", 0) > cutoff]
@@ -327,9 +350,10 @@ def check_daily_limit(user_id, file_token, now=None, path=LIMITS_PATH):
     return True, remaining_after, None
 
 
-def record_download(user_id, file_token, now=None, path=LIMITS_PATH):
+def record_download(user_id, file_token, now=None, path=None):
     """Record a successful PDF delivery for user_id and prune expired entries."""
     now = time.time() if now is None else float(now)
+    path = LIMITS_PATH if path is None else path
     cutoff = now - DAILY_WINDOW_SEC
     data = _load_limits(path)
     uid = str(user_id)
@@ -345,6 +369,445 @@ def record_download(user_id, file_token, now=None, path=LIMITS_PATH):
             del data[k]
     _save_limits(data, path)
 
+
+
+# ------------------------------------------------------------ download stats
+def _atomic_write_json(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _empty_day():
+    return {
+        "delivered": 0,
+        "unique_users": [],
+        "limit_blocked": 0,
+        "not_subscribed": 0,
+        "admin_downloads": 0,
+    }
+
+
+def load_stats(path=None):
+    path = Path(path) if path is not None else STATS_PATH
+    if not path.exists():
+        return {"documents": {}, "days": {}, "last_report_date": ""}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return {"documents": {}, "days": {}, "last_report_date": ""}
+        data.setdefault("documents", {})
+        data.setdefault("days", {})
+        data.setdefault("last_report_date", "")
+        return data
+    except Exception:
+        return {"documents": {}, "days": {}, "last_report_date": ""}
+
+
+def save_stats(data, path=None):
+    path = Path(path) if path is not None else STATS_PATH
+    _atomic_write_json(path, data)
+
+
+def document_key(record):
+    """Prefer catalog relpath (the key in catalog.json files); fall back to token."""
+    record = record or {}
+    relpath = (record.get("relpath") or "").strip()
+    if relpath:
+        return relpath
+    return (record.get("token") or "").strip()
+
+
+def export_download_counts(stats=None, path=None, now=None):
+    """Write a PII-free aggregate map for later use on site cards."""
+    stats = load_stats() if stats is None else stats
+    path = Path(path) if path is not None else COUNTS_PATH
+    now = now or datetime.now()
+    counts = {}
+    for key, doc in (stats.get("documents") or {}).items():
+        if not isinstance(doc, dict):
+            continue
+        out_key = (doc.get("relpath") or doc.get("token") or key or "").strip()
+        if not out_key:
+            continue
+        counts[out_key] = int(doc.get("total") or 0)
+    payload = {
+        "updated_at": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "counts": counts,
+    }
+    _atomic_write_json(path, payload)
+    return payload
+
+
+def _day_bucket(stats, day):
+    days = stats.setdefault("days", {})
+    bucket = days.get(day)
+    if not isinstance(bucket, dict):
+        bucket = _empty_day()
+        days[day] = bucket
+    else:
+        for key, default in _empty_day().items():
+            bucket.setdefault(key, default if not isinstance(default, list) else [])
+    return bucket
+
+
+def _add_unique_user(bucket, user_id):
+    if user_id is None or user_id == "":
+        return
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        uid = user_id
+    users = list(bucket.get("unique_users") or [])
+    existing = {str(u) for u in users}
+    if str(uid) not in existing:
+        users.append(uid)
+        bucket["unique_users"] = users
+
+
+def _bump_document(stats, record, day):
+    key = document_key(record)
+    if not key:
+        return
+    docs = stats.setdefault("documents", {})
+    doc = docs.get(key)
+    if not isinstance(doc, dict):
+        doc = {
+            "title": "",
+            "token": "",
+            "relpath": "",
+            "total": 0,
+            "by_day": {},
+        }
+    if record.get("title"):
+        doc["title"] = record["title"]
+    elif not doc.get("title"):
+        doc["title"] = key
+    if record.get("token"):
+        doc["token"] = record["token"]
+    if record.get("relpath"):
+        doc["relpath"] = record["relpath"]
+    elif not doc.get("relpath") and key != doc.get("token"):
+        doc["relpath"] = key
+    doc["total"] = int(doc.get("total") or 0) + 1
+    by_day = doc.setdefault("by_day", {})
+    if not isinstance(by_day, dict):
+        by_day = {}
+        doc["by_day"] = by_day
+    by_day[day] = int(by_day.get(day) or 0) + 1
+    docs[key] = doc
+
+
+def record_stat(event, record=None, user_id=None, now=None, stats_path=None, counts_path=None):
+    """Record a delivery or a refused request. Admin tests stay out of subscriber totals."""
+    now = now or datetime.now()
+    day = now.strftime("%Y-%m-%d")
+    stats_path = Path(stats_path) if stats_path is not None else STATS_PATH
+    counts_path = Path(counts_path) if counts_path is not None else COUNTS_PATH
+    stats = load_stats(stats_path)
+    bucket = _day_bucket(stats, day)
+    if event == "delivered":
+        bucket["delivered"] = int(bucket.get("delivered") or 0) + 1
+        _add_unique_user(bucket, user_id)
+        _bump_document(stats, record or {}, day)
+    elif event == "admin_downloads":
+        bucket["admin_downloads"] = int(bucket.get("admin_downloads") or 0) + 1
+    elif event == "limit_blocked":
+        bucket["limit_blocked"] = int(bucket.get("limit_blocked") or 0) + 1
+    elif event == "not_subscribed":
+        bucket["not_subscribed"] = int(bucket.get("not_subscribed") or 0) + 1
+    else:
+        raise ValueError(f"unknown stats event: {event}")
+    save_stats(stats, stats_path)
+    export_download_counts(stats, counts_path, now=now)
+    return stats
+
+
+def _docs_sorted(stats, day=None):
+    """Return [(count, title), ...] sorted by count desc, then title."""
+    rows = []
+    for key, doc in (stats.get("documents") or {}).items():
+        if not isinstance(doc, dict):
+            continue
+        if day is not None:
+            count = int((doc.get("by_day") or {}).get(day) or 0)
+        else:
+            count = int(doc.get("total") or 0)
+        if count <= 0:
+            continue
+        title = doc.get("title") or doc.get("relpath") or key
+        rows.append((count, title, key))
+    rows.sort(key=lambda r: (-r[0], str(r[1]).casefold(), str(r[2])))
+    return [(count, title) for count, title, _key in rows]
+
+
+def format_report(now=None, stats_path=None):
+    """Daily owner report in Russian HTML (no parse_mode entities left unescaped)."""
+    now = now or datetime.now()
+    day = now.strftime("%Y-%m-%d")
+    day_label = now.strftime("%d.%m.%Y")
+    stats = load_stats(stats_path)
+    raw = (stats.get("days") or {}).get(day) or {}
+    delivered = int(raw.get("delivered") or 0)
+    unique = len({str(u) for u in (raw.get("unique_users") or [])})
+    blocked = int(raw.get("limit_blocked") or 0)
+    not_sub = int(raw.get("not_subscribed") or 0)
+    admin = int(raw.get("admin_downloads") or 0)
+
+    lines = [
+        f"📊 <b>Статистика скачиваний PDF за {day_label}</b>",
+        "",
+        f"Выдано за день: {delivered}",
+        f"Уникальных подписчиков: {unique}",
+        f"Отказов по лимиту ({DAILY_LIMIT}/сут): {blocked}",
+        f"Не-подписчиков: {not_sub}",
+    ]
+    if admin:
+        lines.append(f"<i>(тестовых скачиваний администратора: {admin})</i>")
+    lines.append("")
+    lines.append("<b>За сегодня (по убыванию):</b>")
+    today_rows = _docs_sorted(stats, day=day)
+    if not today_rows:
+        lines.append("Скачиваний за сегодня не было.")
+    else:
+        for count, title in today_rows:
+            lines.append(f"{count} — {html.escape(title)}")
+    lines.append("")
+    lines.append("<b>За всё время (по убыванию):</b>")
+    all_rows = _docs_sorted(stats, day=None)
+    if not all_rows:
+        lines.append("Пока нет скачиваний.")
+    else:
+        shown = all_rows[:REPORT_TOP_N]
+        for count, title in shown:
+            lines.append(f"{count} — {html.escape(title)}")
+        rest = len(all_rows) - len(shown)
+        if rest > 0:
+            lines.append(f"…и ещё {rest} документов")
+    return "\n".join(lines)
+
+
+def split_message(text, limit=REPORT_CHAR_LIMIT):
+    """Split a report on newlines so each part stays within Telegram's length limit."""
+    text = text or ""
+    if len(text) <= limit:
+        return [text] if text else [""]
+    parts = []
+    current = []
+    current_len = 0
+    for line in text.split("\n"):
+        # A single oversized line is hard-wrapped.
+        while len(line) > limit:
+            if current:
+                parts.append("\n".join(current))
+                current = []
+                current_len = 0
+            parts.append(line[:limit])
+            line = line[limit:]
+        add = len(line) + (1 if current else 0)
+        if current and current_len + add > limit:
+            parts.append("\n".join(current))
+            current = [line]
+            current_len = len(line)
+        else:
+            current.append(line)
+            current_len += add
+    if current:
+        parts.append("\n".join(current))
+    return parts or [""]
+
+
+def _coerce_chat_id(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    try:
+        return int(raw)
+    except ValueError:
+        return raw
+
+
+def get_owner_chat_id(path=None):
+    env = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "").strip()
+    if env:
+        return _coerce_chat_id(env)
+    path = Path(path) if path is not None else OWNER_CHAT_PATH
+    if not path.exists():
+        return ""
+    return _coerce_chat_id(path.read_text(encoding="utf-8"))
+
+
+def save_owner_chat_id(chat_id, path=None):
+    if chat_id is None or str(chat_id).strip() == "":
+        return
+    path = Path(path) if path is not None else OWNER_CHAT_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(str(chat_id).strip() + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def send_report(bot_token, chat_id, now=None, stats_path=None, api_func=None):
+    api_func = api if api_func is None else api_func
+    text = format_report(now=now, stats_path=stats_path)
+    for part in split_message(text):
+        api_func(bot_token, "sendMessage", {
+            "chat_id": chat_id,
+            "text": part,
+            "parse_mode": "HTML",
+        })
+
+
+def report_due(now=None, stats_path=None, owner_id=None):
+    """True when a daily report should be sent: local time >= 23:00, not yet sent today, owner known."""
+    now = now or datetime.now()
+    if (now.hour, now.minute) < (REPORT_HOUR, REPORT_MINUTE):
+        return False
+    today = now.strftime("%Y-%m-%d")
+    stats = load_stats(stats_path)
+    if (stats.get("last_report_date") or "") == today:
+        return False
+    if not (owner_id if owner_id is not None else get_owner_chat_id()):
+        return False
+    return True
+
+
+def maybe_send_daily_report(bot_token, now=None, stats_path=None, api_func=None):
+    """Send the daily report once at or after 23:00 local time if the owner chat is known."""
+    now = now or datetime.now()
+    stats_path = Path(stats_path) if stats_path is not None else STATS_PATH
+    chat_id = get_owner_chat_id()
+    if not report_due(now=now, stats_path=stats_path, owner_id=chat_id):
+        return False
+    send_report(bot_token, chat_id, now=now, stats_path=stats_path, api_func=api_func)
+    stats = load_stats(stats_path)
+    stats["last_report_date"] = now.strftime("%Y-%m-%d")
+    save_stats(stats, stats_path)
+    maybe_push_stats_branch()
+    return True
+
+
+
+def _git(repo, args, input_bytes=None, env=None, check=True, timeout=60):
+    """Run a git command in repo. Never changes the caller's cwd."""
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        input=input_bytes,
+        capture_output=True,
+        check=False,
+        env=env,
+        timeout=timeout,
+    )
+    if check and result.returncode != 0:
+        err = (result.stderr or result.stdout or b"").decode("utf-8", "replace").strip()
+        raise RuntimeError(err or f"git {' '.join(args)}")
+    return result
+
+
+def _git_text(repo, args, input_text=None, env=None, check=True, timeout=60):
+    raw = None if input_text is None else input_text.encode("utf-8")
+    result = _git(repo, args, input_bytes=raw, env=env, check=check, timeout=timeout)
+    return (result.stdout or b"").decode("utf-8", "replace").strip()
+
+
+def _counts_digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _last_pushed_digest(path):
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _save_pushed_digest(path, digest):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(digest + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _git_env():
+    env = os.environ.copy()
+    env.setdefault("GIT_AUTHOR_NAME", "dpgl77")
+    env.setdefault("GIT_AUTHOR_EMAIL", "dpgl77@users.noreply.github.com")
+    env.setdefault("GIT_COMMITTER_NAME", env["GIT_AUTHOR_NAME"])
+    env.setdefault("GIT_COMMITTER_EMAIL", env["GIT_AUTHOR_EMAIL"])
+    return env
+
+
+def build_stats_commit(repo, data, message="Update PDF download counts"):
+    """Create an orphan commit that contains only STATS_REPO_PATH. No checkout."""
+    repo = Path(repo)
+    raw = data if isinstance(data, bytes) else data.encode("utf-8")
+    blob = (_git(repo, ["hash-object", "-w", "--stdin"], input_bytes=raw).stdout or b"").decode("utf-8").strip()
+    leaf = _git_text(
+        repo,
+        ["mktree"],
+        input_text=f"100644 blob {blob}\tdownload_counts.json\n",
+    )
+    root = _git_text(
+        repo,
+        ["mktree"],
+        input_text=f"040000 tree {leaf}\tnews_letter\n",
+    )
+    commit = _git_text(
+        repo,
+        ["commit-tree", root, "-m", message],
+        env=_git_env(),
+    )
+    return commit
+
+
+def push_stats_branch(repo=None, counts_path=None, pushed_path=None, remote="origin", force=False):
+    """Publish only news_letter/download_counts.json to origin/stats.
+
+    Uses git plumbing (hash-object, mktree, commit-tree) and
+    `git push --force origin <sha>:refs/heads/stats`. The working tree,
+    index and the current/main branch are never checked out or modified.
+    Returns True if a push happened, False if skipped because the file
+    is unchanged since the last successful push.
+    """
+    repo = Path(repo) if repo is not None else REPO
+    counts_path = Path(counts_path) if counts_path is not None else COUNTS_PATH
+    pushed_path = Path(pushed_path) if pushed_path is not None else PUSHED_SHA_PATH
+    if not counts_path.is_file():
+        return False
+    data = counts_path.read_bytes()
+    digest = _counts_digest(data)
+    if not force and _last_pushed_digest(pushed_path) == digest:
+        return False
+    # Confirm this is a git repo without touching its index.
+    _git_text(repo, ["rev-parse", "--is-inside-work-tree"])
+    commit = build_stats_commit(repo, data)
+    _git(
+        repo,
+        ["push", "--force", remote, f"{commit}:refs/heads/stats"],
+        timeout=120,
+    )
+    # Remember the remote-tracking ref only (not a local stats branch).
+    _git(repo, ["update-ref", "refs/remotes/origin/stats" if remote == "origin" else f"refs/remotes/{remote}/stats", commit], check=False)
+    _save_pushed_digest(pushed_path, digest)
+    print(f"stats branch: pushed {commit[:12]}")
+    return True
+
+
+def maybe_push_stats_branch(repo=None, counts_path=None, pushed_path=None, remote="origin"):
+    """Like push_stats_branch, but a network or git error is only logged."""
+    try:
+        return push_stats_branch(
+            repo=repo,
+            counts_path=counts_path,
+            pushed_path=pushed_path,
+            remote=remote,
+        )
+    except Exception as exc:
+        print(f"stats branch warning: {exc}")
+        return False
 
 def read_offset():
     if not OFFSET_PATH.exists():
@@ -362,21 +825,37 @@ def lookup(start_token):
     if not STATE_PATH.exists():
         return None
     state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    for record in state.get("files", {}).values():
+    for relpath, record in state.get("files", {}).items():
         if record.get("token") == start_token and Path(record.get("pdf", "")).exists():
-            return record
+            out = dict(record)
+            out["relpath"] = relpath
+            return out
     return None
 
 
 def handle(bot_token, message):
     text = message.get("text") or ""
-    if not text.startswith("/start"):
-        return
     chat = message.get("chat") or {}
     user = message.get("from") or {}
     if chat.get("type") != "private" or "id" not in user:
         return
+    if text.startswith("/stats"):
+        status = member_status(bot_token, user["id"])
+        if status in UNLIMITED_ROLES:
+            save_owner_chat_id(chat["id"])
+            send_report(bot_token, chat["id"])
+        else:
+            api(bot_token, "sendMessage", {
+                "chat_id": chat["id"],
+                "text": "Команда доступна только администратору.",
+            })
+        return
+    if not text.startswith("/start"):
+        return
     payload = text.split(maxsplit=1)[1].strip() if " " in text else ""
+    status = member_status(bot_token, user["id"])
+    if status in UNLIMITED_ROLES:
+        save_owner_chat_id(chat["id"])
     if not payload.startswith("nl_"):
         api(bot_token, "sendMessage", {
             "chat_id": chat["id"],
@@ -390,7 +869,6 @@ def handle(bot_token, message):
             "text": "Этот обзор не найден. Откройте свежую ссылку из канала @dpgl_news.",
         })
         return
-    status = member_status(bot_token, user["id"])
     if not status:
         api(bot_token, "sendMessage", {
             "chat_id": chat["id"],
@@ -401,9 +879,11 @@ def handle(bot_token, message):
                 f"или отправьте команду /start {payload}."
             ),
         })
+        record_stat("not_subscribed", record=record, user_id=user["id"])
         return
     file_token = record.get("token") or payload[3:]
     is_admin = status in UNLIMITED_ROLES
+    remaining = None
     if not is_admin:
         allowed, remaining, next_ts = check_daily_limit(user["id"], file_token)
         if not allowed:
@@ -415,13 +895,17 @@ def handle(bot_token, message):
                     f"Следующий файл станет доступен {when_str}."
                 ),
             })
+            record_stat("limit_blocked", record=record, user_id=user["id"])
             return
     caption = f"<b>{record['title']}</b>\n{record['date_label']}"
     if not is_admin:
         caption += f"\n<i>Лимит по подписке: не более {DAILY_LIMIT} PDF в сутки (осталось сегодня: {remaining}).</i>"
     send_document(bot_token, chat["id"], record["pdf"], caption[:1024], user=user)
-    if not is_admin:
+    if is_admin:
+        record_stat("admin_downloads", record=record, user_id=user["id"])
+    else:
         record_download(user["id"], file_token)
+        record_stat("delivered", record=record, user_id=user["id"])
 
 
 def main():
@@ -452,6 +936,11 @@ def main():
         if updates:
             OFFSET_PATH.write_text(str(offset), encoding="utf-8")
         print(f"gate: updates {len(updates)}")
+        try:
+            maybe_send_daily_report(bot_token)
+        except Exception as exc:
+            print(f"report error: {exc}")
+        maybe_push_stats_branch()
         try:
             import publish_catalog
             publish_catalog.publish_new(bot_token)
