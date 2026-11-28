@@ -8,6 +8,9 @@ Before sendDocument the PDF is watermarked in memory (the file in _private
 is never modified): a faint DPGL77 shield on every page and a footer with
 the site URL plus «специально для @username (ID …) · DD.MM.YYYY».
 Needs pymupdf:  pip install pymupdf
+If watermarking fails, the unmarked original is NOT sent to subscribers
+(they get an error message; the owner is notified). Admins still receive
+the raw file with a warning. Check the PC with:  python telegram_gate.py --check-watermark
 
 Successful subscriber downloads are counted in _private/download_stats.json
 (and a PII-free _private/download_counts.json). The channel owner gets a daily
@@ -156,8 +159,7 @@ def _import_pymupdf():
         return fitz
     except ImportError:
         raise ImportError(
-            "pymupdf is not installed; sending the original PDF. "
-            "On this PC run:  pip install pymupdf"
+            "pymupdf is not installed. On this PC run:  pip install pymupdf"
         )
 
 
@@ -247,17 +249,92 @@ def watermark_pdf(pdf_bytes, user, when=None):
         doc.close()
 
 
-def send_document(bot_token, chat_id, pdf_path, caption, user=None):
-    boundary = "dpgl" + uuid.uuid4().hex
+class WatermarkError(RuntimeError):
+    """PDF could not be watermarked; must not be sent unmarked to a subscriber."""
+
+
+def watermark_status():
+    """Return (ok, detail) after checking pymupdf, a Cyrillic font and the emblem."""
+    try:
+        _import_pymupdf()
+    except ImportError as exc:
+        return False, str(exc)
+    font_path = find_cyrillic_font()
+    if font_path is None:
+        return False, (
+            "no Cyrillic TTF found (install Arial on Windows or DejaVu Sans, "
+            "or copy DejaVuSans.ttf next to telegram_gate.py)"
+        )
+    emblem_path = find_emblem()
+    if emblem_path is None:
+        return False, (
+            "site emblem not found (expected img/dpgl77-shield-large.png "
+            "or img/dpgl77-shield.png in the repo)"
+        )
+    return True, f"pymupdf, font {font_path}, emblem {emblem_path}"
+
+
+def prepare_pdf_bytes(pdf_path, user=None, allow_unmarked=False):
+    """Read the stored PDF and watermark it in memory.
+
+    Returns (file_bytes, marked). Subscribers must get a marked file;
+    on failure this raises WatermarkError unless allow_unmarked is True
+    (admin fallback). The file on disk is never modified.
+    """
     file_bytes = Path(pdf_path).read_bytes()
-    if user is not None:
-        try:
-            file_bytes = watermark_pdf(file_bytes, user)
-        except Exception as exc:
-            print(
-                f"watermark warning: {exc}. Sending the original PDF. "
-                "If pymupdf is missing, install with:  pip install pymupdf"
-            )
+    if user is None:
+        print("WATERMARK FAILED: no Telegram user provided.")
+        if allow_unmarked:
+            print("watermark: sending the original unmarked PDF (admin fallback).")
+            return file_bytes, False
+        raise WatermarkError("no Telegram user provided; refusing to send an unmarked PDF")
+    try:
+        return watermark_pdf(file_bytes, user), True
+    except Exception as exc:
+        print("=" * 70)
+        print(f"WATERMARK FAILED: {exc}")
+        print("On this PC run:  pip install pymupdf")
+        print("Then confirm with:  python telegram_gate.py --check-watermark")
+        print("=" * 70)
+        if allow_unmarked:
+            print("watermark: sending the original unmarked PDF (admin fallback).")
+            return file_bytes, False
+        raise WatermarkError(str(exc)) from exc
+
+
+def notify_watermark_failure(bot_token, record, user, exc, api_func=None):
+    """Tell the channel owner that a subscriber PDF was refused (best-effort)."""
+    api_func = api if api_func is None else api_func
+    owner = get_owner_chat_id()
+    if not owner:
+        print("watermark: no owner chat id, cannot notify admin")
+        return False
+    user = user or {}
+    username = (user.get("username") or "").strip().lstrip("@")
+    who = f"@{username}" if username else f"ID {user.get('id', '')}"
+    title = (record or {}).get("title") or (record or {}).get("relpath") or "PDF"
+    text = (
+        "WATERMARK FAILED: не удалось наложить водяной знак при отправке "
+        f"«{title}» пользователю {who}. Файл подписчику не отправлен.\n"
+        f"Причина: {exc}\n"
+        "На RosTex_3 выполните:  pip install pymupdf\n"
+        "Проверка:  python telegram_gate.py --check-watermark"
+    )
+    try:
+        api_func(bot_token, "sendMessage", {"chat_id": owner, "text": text[:3900]})
+        return True
+    except Exception as notify_exc:
+        print(f"watermark: failed to notify admin: {notify_exc}")
+        return False
+
+
+def send_document(bot_token, chat_id, pdf_path, caption, user=None, allow_unmarked=False):
+    """Send a watermarked PDF. Returns True if marked, False if unmarked admin fallback.
+
+    Raises WatermarkError when watermarking fails and allow_unmarked is False.
+    """
+    boundary = "dpgl" + uuid.uuid4().hex
+    file_bytes, marked = prepare_pdf_bytes(pdf_path, user=user, allow_unmarked=allow_unmarked)
     filename = Path(pdf_path).name
     parts = []
     for name, value in (("chat_id", str(chat_id)), ("caption", caption), ("parse_mode", "HTML")):
@@ -281,6 +358,7 @@ def send_document(bot_token, chat_id, pdf_path, caption, user=None):
         result = json.loads(response.read().decode("utf-8"))
     if not result.get("ok"):
         raise RuntimeError(result.get("description") or "sendDocument")
+    return marked
 
 
 def member_status(bot_token, user_id):
@@ -387,6 +465,7 @@ def _empty_day():
         "limit_blocked": 0,
         "not_subscribed": 0,
         "admin_downloads": 0,
+        "watermark_failed": 0,
     }
 
 
@@ -518,6 +597,8 @@ def record_stat(event, record=None, user_id=None, now=None, stats_path=None, cou
         bucket["limit_blocked"] = int(bucket.get("limit_blocked") or 0) + 1
     elif event == "not_subscribed":
         bucket["not_subscribed"] = int(bucket.get("not_subscribed") or 0) + 1
+    elif event == "watermark_failed":
+        bucket["watermark_failed"] = int(bucket.get("watermark_failed") or 0) + 1
     else:
         raise ValueError(f"unknown stats event: {event}")
     save_stats(stats, stats_path)
@@ -566,6 +647,9 @@ def format_report(now=None, stats_path=None):
     ]
     if admin:
         lines.append(f"<i>(тестовых скачиваний администратора: {admin})</i>")
+    failed = int(raw.get("watermark_failed") or 0)
+    if failed:
+        lines.append(f"Отказов из‑за водяного знака: {failed}")
     lines.append("")
     lines.append("<b>За сегодня (по убыванию):</b>")
     today_rows = _docs_sorted(stats, day=day)
@@ -900,8 +984,32 @@ def handle(bot_token, message):
     caption = f"<b>{record['title']}</b>\n{record['date_label']}"
     if not is_admin:
         caption += f"\n<i>Лимит по подписке: не более {DAILY_LIMIT} PDF в сутки (осталось сегодня: {remaining}).</i>"
-    send_document(bot_token, chat["id"], record["pdf"], caption[:1024], user=user)
+    try:
+        marked = send_document(
+            bot_token, chat["id"], record["pdf"], caption[:1024],
+            user=user, allow_unmarked=is_admin,
+        )
+    except WatermarkError as exc:
+        print(f"watermark: not sending unmarked PDF to chat {chat['id']}: {exc}")
+        api(bot_token, "sendMessage", {
+            "chat_id": chat["id"],
+            "text": (
+                "Сейчас не удалось подготовить защищённый PDF (водяной знак и колонтитул). "
+                "Файл не отправлен. Попробуйте позже."
+            ),
+        })
+        notify_watermark_failure(bot_token, record, user, exc)
+        record_stat("watermark_failed", record=record, user_id=user["id"])
+        return
     if is_admin:
+        if marked is False:
+            api(bot_token, "sendMessage", {
+                "chat_id": chat["id"],
+                "text": (
+                    "Внимание: водяной знак не наложен, отправлен исходный PDF. "
+                    "Проверьте установку:  pip install pymupdf"
+                ),
+            })
         record_stat("admin_downloads", record=record, user_id=user["id"])
     else:
         record_download(user["id"], file_token)
@@ -922,6 +1030,14 @@ def main():
         print("gate: already running")
         return
     try:
+        ready, detail = watermark_status()
+        if ready:
+            print(f"gate: watermark ready ({detail})")
+        else:
+            print(
+                "gate: WATERMARK UNAVAILABLE — subscriber PDFs will be refused "
+                f"until this is fixed. {detail}"
+            )
         offset = read_offset()
         updates = api(bot_token, "getUpdates", {
             "offset": offset,
@@ -972,8 +1088,19 @@ def _cli_watermark(argv):
     print(f"watermarked {args.dst} ({len(out)} bytes)  {recipient_label(user)}")
 
 
+def _cli_check_watermark():
+    ready, detail = watermark_status()
+    if ready:
+        print(f"watermark ready: {detail}")
+        return 0
+    print(f"WATERMARK UNAVAILABLE: {detail}")
+    return 1
+
+
 if __name__ == "__main__":
     import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--check-watermark":
+        raise SystemExit(_cli_check_watermark())
     if len(sys.argv) > 1 and sys.argv[1] == "--watermark":
         try:
             _cli_watermark(sys.argv[2:])
