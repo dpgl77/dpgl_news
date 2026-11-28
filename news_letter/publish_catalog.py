@@ -16,6 +16,7 @@ are now put by the assistant before publishing.
 Dry run (writes nothing; only `git fetch` updates remote refs):
     python publish_catalog.py --dry-run
 """
+import base64
 import hashlib
 import json
 import os
@@ -162,11 +163,10 @@ def pdf_source_files():
 
 
 # Bump this string to force a rebuild of every stored PDF after a change
-# in printable_html that is not visible in the source HTML (27.11.2026:
-# hide «Скачать PDF», reserve a bottom margin for the send-time footer,
-# and strip the Yandex.Metrika counter so headless Edge/Chrome does not
-# wait on mc.yandex.ru when printing).
-PDF_BUILD_SALT = b"pdf-v3-strip-metrika-2026-11-27"
+# in printable_html that is not visible in the source HTML (28.11.2026:
+# also inline the header emblem as a data: URI, because the temp print
+# HTML lives under _private/pdf/ and ../../img/ no longer resolves).
+PDF_BUILD_SALT = b"pdf-v4-inline-emblem-2026-11-28"
 
 
 def html_sha256(path):
@@ -174,7 +174,61 @@ def html_sha256(path):
 
 
 # ---------------------------------------------------------------- PDF
+_EMBLEM_SRC_RE = re.compile(
+    r'(?P<pre>src\s*=\s*["\'])(?P<path>[^"\']*img/dpgl77-shield(?:-large)?\.png)(?P<post>["\'])',
+    re.I,
+)
+_EMBLEM_LAZY_RE = re.compile(
+    r'(<img\b[^>]*\bsrc\s*=\s*["\']data:image/[^"\']+["\'][^>]*)\s+loading\s*=\s*["\']lazy["\']',
+    re.I,
+)
+
+
+def emblem_data_uri(filename="dpgl77-shield.png"):
+    """data: URI for a repo emblem, or None if the file is missing."""
+    name = Path(str(filename).replace("\\", "/")).name
+    for path in (
+        REPO / "img" / name,
+        ROOT.parent / "img" / name,
+        ROOT / "img" / name,
+    ):
+        if path.is_file():
+            payload = base64.b64encode(path.read_bytes()).decode("ascii")
+            return f"data:image/png;base64,{payload}"
+    return None
+
+
+def inline_site_emblem(raw):
+    """Embed the header shield so print-to-PDF does not depend on a relative path.
+
+    build_pdfs() writes a temp *.print.html under news_letter/_private/pdf/<Folder>/,
+    so src="../../img/dpgl77-shield.png" (correct on the live page) would resolve
+    to news_letter/_private/img/, which does not exist — Chrome then shows a
+    broken-image box in the header.
+    """
+    cache = {}
+
+    def repl(match):
+        name = Path(match.group("path").replace("\\", "/")).name
+        if name not in cache:
+            uri = emblem_data_uri(name)
+            if uri is None:
+                print(f"pdf: emblem not found ({name}), leaving original src")
+                cache[name] = None
+            else:
+                cache[name] = uri
+        uri = cache[name]
+        if not uri:
+            return match.group(0)
+        return f'{match.group("pre")}{uri}{match.group("post")}'
+
+    raw = _EMBLEM_SRC_RE.sub(repl, raw)
+    raw = _EMBLEM_LAZY_RE.sub(r"\1", raw)
+    return raw
+
+
 def printable_html(raw):
+    raw = inline_site_emblem(raw)
     # Drop the live-site Metrika tag: headless print must not fetch mc.yandex.ru.
     raw = re.sub(
         r"<!-- Yandex\.Metrika counter -->.*?<!-- /Yandex\.Metrika counter -->\s*",
