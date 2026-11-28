@@ -1,11 +1,11 @@
-const CACHE_NAME = 'dpgl-news-v5';
+const CACHE_NAME = 'dpgl-news-v6';
 const SHELL = [
   './index.html',
   './style.css',
   './script.js',
-  './manifest.json?v=2',
-  './icon-192.png?v=2',
-  './icon-512.png?v=2',
+  './manifest.json?v=3',
+  './icon-192.png?v=3',
+  './icon-512.png?v=3',
   './img/dpgl77-shield.png'
 ];
 

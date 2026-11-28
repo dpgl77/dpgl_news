@@ -166,7 +166,7 @@ def pdf_source_files():
 # in printable_html that is not visible in the source HTML (28.11.2026:
 # also inline the header emblem as a data: URI, because the temp print
 # HTML lives under _private/pdf/ and ../../img/ no longer resolves).
-PDF_BUILD_SALT = b"pdf-v4-inline-emblem-2026-11-28"
+PDF_BUILD_SALT = b"pdf-v5-emblem-v3-2026-11-28"
 
 
 def html_sha256(path):
