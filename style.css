@@ -267,3 +267,127 @@ header.top a.emblem .emblem-zoom img {
     user-select: none;
     pointer-events: none;
 }
+
+/* Animated motto «Информация — тоже оружие» (28.11.2026) */
+header.top h1.motto {
+    position: relative;
+    overflow: visible;
+    background-image: linear-gradient(100deg, #7a1610 0%, #c43b28 16%, #e07a3d 34%, #c69b4b 50%, #f3d78a 58%, #c69b4b 70%, #a32a1c 88%, #6b120e 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #c69b4b;
+    filter: drop-shadow(0 0 6px rgba(198, 155, 75, .4));
+}
+header.top h1.motto.motto-ready {
+    background-image: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: inherit;
+    color: #c69b4b;
+    filter: none;
+}
+header.top h1.motto .motto-stage {
+    position: relative;
+    z-index: 1;
+    display: inline;
+}
+header.top h1.motto .motto-word {
+    display: inline-block;
+    white-space: nowrap;
+}
+header.top h1.motto .motto-letter {
+    display: inline-block;
+    line-height: inherit;
+    opacity: 0;
+    transform: translateY(3px) scale(.88);
+    background-image: linear-gradient(165deg, #f3d78a 0%, #c69b4b 22%, #e07a3d 46%, #c41e12 72%, #7a1610 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    text-shadow: none;
+    will-change: transform, opacity, filter;
+    transition: transform .2s ease, opacity .16s ease, filter .22s ease, text-shadow .2s ease;
+}
+header.top h1.motto .motto-letter.is-on {
+    opacity: 1;
+    transform: none;
+}
+header.top h1.motto .motto-letter.is-flash {
+    opacity: 1;
+    background-image: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: #fff8e0;
+    color: #fff8e0;
+    text-shadow:
+        0 0 4px #fff,
+        0 0 10px #ffd27a,
+        0 0 20px #ff7a2a,
+        0 0 34px #c41e12,
+        0 0 48px rgba(139, 0, 0, .7);
+    transform: scale(1.12);
+    filter: brightness(1.35);
+}
+header.top h1.motto.is-settled .motto-stage {
+    animation: motto-smolder 3.4s ease-in-out infinite;
+}
+@keyframes motto-smolder {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(198, 155, 75, .38)) drop-shadow(0 0 10px rgba(196, 30, 18, .18)); }
+    50% { filter: drop-shadow(0 0 8px rgba(243, 215, 138, .58)) drop-shadow(0 0 16px rgba(232, 93, 42, .32)); }
+}
+header.top h1.motto.is-shake {
+    animation: motto-shake .28s ease-out;
+}
+@keyframes motto-shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, 1px); }
+    80% { transform: translate(1px, 0); }
+}
+header.top h1.motto .motto-fx {
+    position: absolute;
+    left: -90px;
+    top: -70px;
+    width: calc(100% + 180px);
+    height: calc(100% + 140px);
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+}
+@media (max-width: 640px) {
+    header.top h1.motto { font-size: 20px; }
+    header.top h1.motto .motto-fx {
+        left: -48px;
+        top: -36px;
+        width: calc(100% + 96px);
+        height: calc(100% + 72px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    header.top h1.motto,
+    header.top h1.motto.motto-ready {
+        background-image: linear-gradient(100deg, #7a1610 0%, #c43b28 16%, #e07a3d 34%, #c69b4b 50%, #f3d78a 58%, #c69b4b 70%, #a32a1c 88%, #6b120e 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: #c69b4b;
+        filter: drop-shadow(0 0 6px rgba(198, 155, 75, .4));
+        animation: none !important;
+        transform: none !important;
+    }
+    header.top h1.motto .motto-letter {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        animation: none !important;
+        text-shadow: none !important;
+    }
+    header.top h1.motto.is-settled .motto-stage {
+        animation: none !important;
+        filter: none !important;
+    }
+    header.top h1.motto .motto-fx { display: none !important; }
+}

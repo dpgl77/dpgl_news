@@ -139,7 +139,7 @@ if ('serviceWorker' in navigator) {
     function updateToggleUi() {
         if (!toggleBtn) return;
         toggleBtn.textContent = enabled ? '⏸' : '▶';
-        toggleBtn.title = enabled ? 'Остановить движение кнопок' : 'Включить движение кнопок';
+        toggleBtn.title = enabled ? 'Остановить движение кнопок и девиза' : 'Включить движение кнопок и девиза';
         toggleBtn.setAttribute('aria-label', toggleBtn.title);
     }
 
@@ -294,6 +294,7 @@ if ('serviceWorker' in navigator) {
             enabled = !enabled;
             localStorage.setItem('dpgl-float-buttons', enabled ? 'on' : 'off');
             updateToggleUi();
+            document.dispatchEvent(new CustomEvent('dpgl-motion-toggle', { detail: { enabled } }));
             if (enabled) start(); else teardown();
         });
     }
@@ -389,6 +390,8 @@ if ('serviceWorker' in navigator) {
         vy = Math.sin(angle) * speed;
         phase = 0;
         overlay.classList.add('active');
+        document.documentElement.classList.add('dpgl-screensaver-on');
+        document.dispatchEvent(new CustomEvent('dpgl-screensaver', { detail: { active: true } }));
         lastTime = performance.now();
         rafId = requestAnimationFrame(tick);
     }
@@ -401,6 +404,8 @@ if ('serviceWorker' in navigator) {
                 rafId = null;
             }
             if (overlay) overlay.classList.remove('active');
+            document.documentElement.classList.remove('dpgl-screensaver-on');
+            document.dispatchEvent(new CustomEvent('dpgl-screensaver', { detail: { active: false } }));
         }
         resetTimer();
     }
@@ -422,4 +427,364 @@ if ('serviceWorker' in navigator) {
     });
 
     resetTimer();
+})();
+
+// Animated motto: letter ignition, muzzle flashes, spark bursts (28.11.2026)
+(function initMotto() {
+    const h1 = document.querySelector('header.top h1.motto') || document.querySelector('header.top h1');
+    if (!h1) return;
+
+    const MOTTO = (h1.getAttribute('aria-label') || h1.textContent || '').replace(/\s+/g, ' ').trim() || 'Информация — тоже оружие';
+    h1.classList.add('motto');
+    if (!h1.getAttribute('aria-label')) h1.setAttribute('aria-label', MOTTO);
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    h1.classList.add('motto-ready');
+    if (reduceMotion) {
+        h1.classList.add('motto-static', 'is-settled');
+        return;
+    }
+
+    const SPARK_COLORS = ['#fff8e0', '#ffe9a8', '#ffd27a', '#c69b4b', '#ffb347'];
+    const BURST_COLORS = ['#ff7a2a', '#e85d2a', '#c41e12', '#ff9a3a', '#c69b4b', '#8b1a14'];
+    const DEBRIS_COLORS = ['#c69b4b', '#a32a1c', '#e07a3d', '#8b1a14', '#f3d78a'];
+
+    let userPaused = localStorage.getItem('dpgl-float-buttons') === 'off';
+    let letters = [];
+    let words = [];
+    let canvas = null;
+    let ctx = null;
+    let particles = [];
+    let flashes = [];
+    let rafId = null;
+    let lastTime = 0;
+    let pulseTimer = null;
+    let introTimer = null;
+    let introIndex = 0;
+    let introDone = userPaused;
+    let settled = userPaused;
+    let running = false;
+    let cssW = 0;
+    let cssH = 0;
+
+    function isMobile() {
+        return window.matchMedia('(max-width: 640px)').matches || window.innerWidth < 700;
+    }
+
+    function isHeld() {
+        if (userPaused) return true;
+        if (document.hidden) return true;
+        if (document.documentElement.classList.contains('dpgl-screensaver-on')) return true;
+        const ss = document.getElementById('dpgl-screensaver');
+        return !!(ss && ss.classList.contains('active'));
+    }
+
+    function wrapText() {
+        const raw = h1.textContent.replace(/\s+/g, ' ').trim();
+        h1.textContent = '';
+        const stage = document.createElement('span');
+        stage.className = 'motto-stage';
+        raw.split(/(\s+)/).forEach(part => {
+            if (!part) return;
+            if (/^\s+$/.test(part)) {
+                stage.appendChild(document.createTextNode(part));
+                return;
+            }
+            const word = document.createElement('span');
+            word.className = 'motto-word';
+            word.setAttribute('data-word', part);
+            const wordLetters = [];
+            Array.from(part).forEach(ch => {
+                const el = document.createElement('span');
+                el.className = 'motto-letter';
+                el.textContent = ch;
+                word.appendChild(el);
+                letters.push(el);
+                wordLetters.push(el);
+            });
+            words.push({ el: word, letters: wordLetters });
+            stage.appendChild(word);
+        });
+        canvas = document.createElement('canvas');
+        canvas.className = 'motto-fx';
+        canvas.setAttribute('aria-hidden', 'true');
+        h1.appendChild(stage);
+        h1.appendChild(canvas);
+        ctx = canvas.getContext('2d');
+        if (settled) {
+            letters.forEach(el => el.classList.add('is-on'));
+            h1.classList.add('is-settled');
+        }
+    }
+
+    function sizeCanvas() {
+        if (!canvas) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = canvas.getBoundingClientRect();
+        cssW = Math.max(1, Math.round(rect.width));
+        cssH = Math.max(1, Math.round(rect.height));
+        const w = Math.max(1, Math.round(cssW * dpr));
+        const h = Math.max(1, Math.round(cssH * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function localPoint(el) {
+        const r = el.getBoundingClientRect();
+        const c = canvas.getBoundingClientRect();
+        return { x: r.left + r.width / 2 - c.left, y: r.top + r.height / 2 - c.top };
+    }
+
+    function pick(arr) {
+        return arr[(Math.random() * arr.length) | 0];
+    }
+
+    function spawnBurst(x, y, power) {
+        const mobile = isMobile();
+        const base = mobile ? 14 : 32;
+        const count = Math.max(8, Math.round(base * power));
+        for (let i = 0; i < count; i++) {
+            const debris = Math.random() < 0.28;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = (debris ? 70 : 110) * power * (0.35 + Math.random());
+            const upward = (mobile ? 18 : 32) * power;
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - upward,
+                life: 1,
+                decay: (debris ? 0.9 : 1.15) * (0.85 + Math.random() * 0.5),
+                size: debris ? 2 + Math.random() * 2.6 : 1 + Math.random() * 2.1,
+                color: debris ? pick(DEBRIS_COLORS) : (Math.random() < 0.55 ? pick(SPARK_COLORS) : pick(BURST_COLORS)),
+                type: debris ? 'debris' : 'spark',
+                rot: Math.random() * Math.PI,
+                vr: (Math.random() - 0.5) * 10,
+                g: debris ? 220 : 120,
+                drag: debris ? 0.978 : 0.986
+            });
+        }
+        flashes.push({
+            x, y,
+            r: 3,
+            maxR: (mobile ? 24 : 42) * (0.7 + 0.5 * power),
+            a: 0.95 * Math.min(1, 0.55 + power * 0.5),
+            decay: 3.6
+        });
+    }
+
+    function shake(strong) {
+        h1.classList.remove('is-shake');
+        void h1.offsetWidth;
+        h1.style.animationDuration = strong ? '.32s' : '.22s';
+        h1.classList.add('is-shake');
+        window.setTimeout(() => {
+            h1.classList.remove('is-shake');
+            h1.style.animationDuration = '';
+        }, 340);
+    }
+
+    function igniteLetter(el, power) {
+        if (!el) return;
+        el.classList.add('is-flash');
+        el.classList.remove('is-on');
+        const p = localPoint(el);
+        spawnBurst(p.x, p.y, power);
+        window.setTimeout(() => {
+            el.classList.remove('is-flash');
+            el.classList.add('is-on');
+        }, 130);
+    }
+
+    function ensureLoop() {
+        if (running || isHeld()) return;
+        running = true;
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(step);
+    }
+
+    function step(now) {
+        if (isHeld()) {
+            running = false;
+            rafId = null;
+            return;
+        }
+        const dt = Math.min(0.05, (now - lastTime) / 1000 || 0.016);
+        lastTime = now;
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.vx *= Math.pow(p.drag, dt * 60);
+            p.vy = p.vy * Math.pow(p.drag, dt * 60) + p.g * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.rot += p.vr * dt;
+            p.life -= p.decay * dt;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = flashes.length - 1; i >= 0; i--) {
+            const f = flashes[i];
+            f.r += (f.maxR - f.r) * Math.min(1, 10 * dt);
+            f.a -= f.decay * dt;
+            if (f.a <= 0) flashes.splice(i, 1);
+        }
+
+        draw();
+
+        if (particles.length || flashes.length) {
+            rafId = requestAnimationFrame(step);
+        } else {
+            running = false;
+            rafId = null;
+        }
+    }
+
+    function draw() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, cssW, cssH);
+        for (const f of flashes) {
+            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+            g.addColorStop(0, `rgba(255, 248, 224, ${0.95 * f.a})`);
+            g.addColorStop(0.35, `rgba(255, 210, 122, ${0.55 * f.a})`);
+            g.addColorStop(0.7, `rgba(255, 122, 42, ${0.28 * f.a})`);
+            g.addColorStop(1, 'rgba(196, 30, 18, 0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        for (const p of particles) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            if (p.type === 'debris') {
+                ctx.fillRect(-p.size, -p.size * 0.35, p.size * 2.1, p.size * 0.7);
+            } else {
+                const len = Math.min(9, Math.hypot(p.vx, p.vy) * 0.04);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, p.size + len, p.size * 0.55, Math.atan2(p.vy, p.vx), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function schedulePulse() {
+        window.clearTimeout(pulseTimer);
+        if (!introDone || isHeld()) return;
+        const wait = 8000 + Math.random() * 4000;
+        pulseTimer = window.setTimeout(runPulse, wait);
+    }
+
+    function runPulse() {
+        if (isHeld() || !introDone || !words.length) {
+            schedulePulse();
+            return;
+        }
+        sizeCanvas();
+        const word = words[(Math.random() * words.length) | 0];
+        const power = 0.55;
+        word.letters.forEach((el, i) => {
+            window.setTimeout(() => igniteLetter(el, power), i * 45);
+        });
+        const mid = word.letters[Math.floor(word.letters.length / 2)] || word.el;
+        const p = localPoint(mid);
+        spawnBurst(p.x, p.y, 0.7);
+        shake(false);
+        ensureLoop();
+        schedulePulse();
+    }
+
+    function playIntro() {
+        if (introDone || isHeld() || !letters.length) {
+            if (!introDone && letters.length && !isHeld()) {
+                // continue after a pause mid-intro
+            } else {
+                return;
+            }
+        }
+        sizeCanvas();
+        const stepMs = 78;
+        const startDelay = introIndex === 0 ? 180 : 0;
+
+        function next() {
+            if (isHeld()) return;
+            if (introIndex >= letters.length) {
+                introDone = true;
+                settled = true;
+                h1.classList.add('is-settled');
+                shake(true);
+                schedulePulse();
+                return;
+            }
+            const el = letters[introIndex];
+            const isWordEnd = introIndex === letters.length - 1 || !el.parentElement || el.parentElement !== letters[introIndex + 1].parentElement;
+            igniteLetter(el, isWordEnd ? 1.05 : 0.85);
+            if (isWordEnd) shake(introIndex === letters.length - 1);
+            introIndex += 1;
+            introTimer = window.setTimeout(next, stepMs);
+            ensureLoop();
+        }
+
+        introTimer = window.setTimeout(next, startDelay);
+    }
+
+    function onPauseChange() {
+        if (isHeld()) {
+            window.clearTimeout(introTimer);
+            window.clearTimeout(pulseTimer);
+            pulseTimer = null;
+            introTimer = null;
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            running = false;
+            return;
+        }
+        sizeCanvas();
+        if (!introDone) {
+            playIntro();
+            ensureLoop();
+            return;
+        }
+        ensureLoop();
+        schedulePulse();
+    }
+
+    wrapText();
+    sizeCanvas();
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(sizeCanvas, 120);
+    });
+    if (window.ResizeObserver && canvas) {
+        new ResizeObserver(() => sizeCanvas()).observe(h1);
+    }
+
+    document.addEventListener('dpgl-motion-toggle', ev => {
+        userPaused = !(ev && ev.detail && ev.detail.enabled);
+        onPauseChange();
+    });
+    document.addEventListener('dpgl-screensaver', onPauseChange);
+    document.addEventListener('visibilitychange', onPauseChange);
+
+    if (!userPaused) playIntro();
+    else {
+        letters.forEach(el => el.classList.add('is-on'));
+        h1.classList.add('is-settled');
+    }
+
+    window.__dpglMotto = {
+        get introDone() { return introDone; },
+        get paused() { return isHeld(); },
+        get particleCount() { return particles.length; }
+    };
 })();
