@@ -154,8 +154,9 @@ body.dark .tabs-sep { background: #343a40; }
 /* ---- mobile ---- */
 @media (max-width: 640px) {
     header.top { padding: 10px 12px 8px; }
-    header.top h1 { font-size: 20px; }
+    header.top h1 { font-size: clamp(17px, 5.2vw, 22px); line-height: 1.2; }
     .timer-label { display: none; }
+    .timer-countdown::before { content: "\27F3\00A0"; opacity: .85; }
     .timer-box { padding: 4px 10px; font-size: 12px; }
     .timer-countdown { margin-left: 0; }
     .theme-btn { height: 32px; min-width: 36px; }
@@ -178,6 +179,12 @@ header.top .brand-text { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 640px) {
     header.top .brand-lockup { gap: 10px; }
     header.top a.emblem img.emblem-small { height: 40px; }
+    /* phone: «DPGL NEWS» + timer/buttons share row 1, the motto gets the full width of row 2 (max two lines) */
+    header.top .brand-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
+    header.top .brand { grid-column: 1; grid-row: 1; margin: 0; }
+    header.top .title-row { display: contents; }
+    header.top .header-tools { grid-column: 2; grid-row: 1; gap: 6px; }
+    header.top h1 { grid-column: 1 / -1; grid-row: 2; margin-top: 2px; }
 }
 
 /* Hover fullscreen preview for emblem */
@@ -358,7 +365,7 @@ header.top h1.motto .motto-fx {
     overflow: visible;
 }
 @media (max-width: 640px) {
-    header.top h1.motto { font-size: 20px; }
+    header.top h1.motto { font-size: clamp(17px, 5.2vw, 22px); line-height: 1.2; }
     header.top h1.motto .motto-fx {
         left: -48px;
         top: -36px;
@@ -367,27 +374,34 @@ header.top h1.motto .motto-fx {
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    header.top h1.motto,
-    header.top h1.motto.motto-ready {
+    html:not(.dpgl-motion-full) header.top h1.motto,
+    html:not(.dpgl-motion-full) header.top h1.motto.motto-ready {
         background-image: linear-gradient(100deg, #7a1610 0%, #c43b28 16%, #e07a3d 34%, #c69b4b 50%, #f3d78a 58%, #c69b4b 70%, #a32a1c 88%, #6b120e 100%);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         color: #c69b4b;
         filter: drop-shadow(0 0 6px rgba(198, 155, 75, .4));
-        animation: none !important;
         transform: none !important;
     }
-    header.top h1.motto .motto-letter {
+    html:not(.dpgl-motion-full) header.top h1.motto .motto-letter {
         opacity: 1 !important;
         transform: none !important;
         filter: none !important;
         animation: none !important;
         text-shadow: none !important;
     }
-    header.top h1.motto.is-settled .motto-stage {
+    html:not(.dpgl-motion-full) header.top h1.motto.is-settled .motto-stage {
         animation: none !important;
         filter: none !important;
     }
-    header.top h1.motto .motto-fx { display: none !important; }
+    html:not(.dpgl-motion-full) header.top h1.motto .motto-fx { display: none !important; }
+}
+/* calm version (reduced motion): no movement, no flashes; a slow soft glow only */
+header.top h1.motto.motto-calm { animation: motto-calm-in 1.2s ease-out both, motto-calm-glow 5s ease-in-out 1.2s infinite; }
+header.top h1.motto.motto-calm .motto-fx { display: none !important; }
+@keyframes motto-calm-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes motto-calm-glow {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(198, 155, 75, .30)); }
+    50% { filter: drop-shadow(0 0 9px rgba(243, 215, 138, .55)) drop-shadow(0 0 14px rgba(232, 93, 42, .22)); }
 }

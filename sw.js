@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dpgl-news-v8';
+const CACHE_NAME = 'dpgl-news-v9';
 const SHELL = [
   './index.html',
   './style.css',

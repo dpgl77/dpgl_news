@@ -1,36 +1,94 @@
+// Safe storage: in-app browsers (Telegram, Instagram...), private mode and blocked cookies can THROW
+// on any localStorage access. Before 28.11.2026 that stopped the whole script: no timer, no motto, empty first tab.
+const dpglStore = (function () {
+    let ls = null;
+    try { ls = window.localStorage; ls.getItem('dpgl-probe'); } catch (e) { ls = null; }
+    const mem = {};
+    return {
+        get(k) {
+            try { if (ls) return ls.getItem(k); } catch (e) {}
+            return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+        },
+        set(k, v) {
+            mem[k] = String(v);
+            try { if (ls) ls.setItem(k, v); } catch (e) {}
+        }
+    };
+})();
+
 const REFRESH_INTERVAL = 30 * 60;
-let timeLeft = REFRESH_INTERVAL;
+// Wall-clock deadline instead of "one tick = one second": phones freeze timers when the screen is off
+// or the tab is in the background, a tick counter then stays frozen/stale.
+let refreshDeadline = Date.now() + REFRESH_INTERVAL * 1000;
+
+const IFRAME_WATCHDOG_MS = 15000;
 
 function loadIframe(iframe) {
-    if (!iframe.src && iframe.dataset.src) {
+    if (!iframe) return;
+    if (!iframe.getAttribute('src') && iframe.dataset.src) {
+        iframe.removeAttribute('data-loaded');
+        iframe.dataset.tries = '0';
         iframe.src = iframe.dataset.src;
+        watchIframe(iframe);
     }
 }
 
-function updateTimer() {
-    const m = Math.floor(timeLeft / 60);
-    const s = timeLeft % 60;
-    document.getElementById('countdown').textContent =
-        `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+// If an embedded feed has not reported "load" within 15 s (flaky mobile network), retry once with a cache-buster.
+function watchIframe(iframe) {
+    window.setTimeout(() => {
+        if (iframe.getAttribute('data-loaded') === '1') return;
+        retryIframe(iframe);
+    }, IFRAME_WATCHDOG_MS);
+}
 
-    if (timeLeft <= 0) {
-        refreshAllIframes();
-        timeLeft = REFRESH_INTERVAL;
-    } else {
-        timeLeft--;
+function retryIframe(iframe) {
+    const tries = parseInt(iframe.dataset.tries || '0', 10);
+    if (tries >= 2 || !iframe.getAttribute('src')) return;
+    iframe.dataset.tries = String(tries + 1);
+    iframe.removeAttribute('data-loaded');
+    bustIframe(iframe);
+    watchIframe(iframe);
+}
+
+function bustIframe(iframe) {
+    try {
+        const url = new URL(iframe.src);
+        url.searchParams.set('t', Date.now());
+        iframe.src = url.toString();
+    } catch (e) {
+        const clean = iframe.src.replace(/[&?]t=\d+/, '');
+        iframe.src = clean + (clean.includes('?') ? '&' : '?') + 't=' + Date.now();
     }
+}
+
+function renderCountdown(sec) {
+    const el = document.getElementById('countdown');
+    if (!el) return;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    el.textContent = `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+}
+
+function updateTimer() {
+    let left = Math.ceil((refreshDeadline - Date.now()) / 1000);
+    if (left > REFRESH_INTERVAL) {          // device clock moved backwards
+        refreshDeadline = Date.now() + REFRESH_INTERVAL * 1000;
+        left = REFRESH_INTERVAL;
+    }
+    if (left <= 0) {
+        refreshAllIframes();
+        refreshDeadline = Date.now() + REFRESH_INTERVAL * 1000;
+        left = REFRESH_INTERVAL;
+    }
+    renderCountdown(left);
 }
 
 function refreshAllIframes() {
     document.querySelectorAll('iframe[src]').forEach(iframe => {
-        try {
-            const url = new URL(iframe.src);
-            url.searchParams.set('t', Date.now());
-            iframe.src = url.toString();
-        } catch (e) {
-            const clean = iframe.src.replace(/[&?]t=\d+/, '');
-            iframe.src = clean + (clean.includes('?') ? '&' : '?') + 't=' + Date.now();
-        }
+        iframe.removeAttribute('data-loaded');
+        iframe.dataset.tries = '0';
+        bustIframe(iframe);
+        watchIframe(iframe);
     });
 }
 
@@ -40,28 +98,60 @@ function openTab(evt, tabId) {
 
     const tab = document.getElementById(tabId);
     tab.classList.add('active');
-    evt.currentTarget.classList.add('active');
+    const btn = (evt && (evt.currentTarget || evt.target)) || null;
+    if (btn && btn.classList) btn.classList.add('active');
 
     const iframe = tab.querySelector('iframe');
-    if (iframe) loadIframe(iframe);
+    if (iframe) {
+        loadIframe(iframe);
+        // a tab whose feed never finished loading gets another try when opened
+        if (iframe.getAttribute('src') && iframe.getAttribute('data-loaded') !== '1') retryIframe(iframe);
+    }
 }
+
+// Initial load FIRST: nothing below may prevent the default tab and the timer from starting.
+(function bootFeedAndTimer() {
+    document.querySelectorAll('iframe').forEach(f => {
+        f.addEventListener('load', () => { if (f.getAttribute('src')) f.setAttribute('data-loaded', '1'); });
+    });
+    const first = document.querySelector('.tab-content.active iframe');
+    if (first && first.getAttribute('src')) {
+        // src is already in the HTML (starts loading before JS): only watch it
+        first.dataset.tries = '0';
+        watchIframe(first);
+    } else {
+        loadIframe(first);
+    }
+    renderCountdown(REFRESH_INTERVAL);
+    setInterval(updateTimer, 1000);
+    const resync = () => {
+        updateTimer();
+        const act = document.querySelector('.tab-content.active iframe');
+        if (act && !act.getAttribute('src')) loadIframe(act);
+        else if (act && act.getAttribute('data-loaded') !== '1') retryIframe(act);
+    };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resync(); });
+    window.addEventListener('pageshow', resync);
+    window.addEventListener('online', resync);
+    window.addEventListener('focus', updateTimer);
+})();
 
 // Theme toggle
-const themeBtn = document.getElementById('theme-toggle');
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark');
-    themeBtn.textContent = '☀️';
-}
-themeBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark');
-    const isDark = document.body.classList.contains('dark');
-    themeBtn.textContent = isDark ? '☀️' : '🌙';
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-});
-
-// Initial load
-loadIframe(document.querySelector('.tab-content.active iframe'));
-setInterval(updateTimer, 1000);
+try {
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) {
+        if (dpglStore.get('theme') === 'dark') {
+            document.body.classList.add('dark');
+            themeBtn.textContent = '☀️';
+        }
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            themeBtn.textContent = isDark ? '☀️' : '🌙';
+            dpglStore.set('theme', isDark ? 'dark' : 'light');
+        });
+    }
+} catch (e) {}
 
 let reloadingForUpdate = false;
 let sessionStamp = null;
@@ -119,7 +209,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Slowly drifting, horizontal-only collision-bouncing buttons (single-row height preserved)
-(function initFloatingButtons() {
+try { (function initFloatingButtons() {
     const MIN_WIDTH = 700;
     const PAD = 6;
     const GAP = 6;
@@ -130,7 +220,7 @@ if ('serviceWorker' in navigator) {
     if (!navs.length) return;
 
     const toggleBtn = document.getElementById('float-toggle');
-    let enabled = localStorage.getItem('dpgl-float-buttons') !== 'off';
+    let enabled = dpglStore.get('dpgl-float-buttons') !== 'off';
     let active = false;
     let rafId = null;
     let lastTime = 0;
@@ -292,7 +382,7 @@ if ('serviceWorker' in navigator) {
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
             enabled = !enabled;
-            localStorage.setItem('dpgl-float-buttons', enabled ? 'on' : 'off');
+            dpglStore.set('dpgl-float-buttons', enabled ? 'on' : 'off');
             updateToggleUi();
             document.dispatchEvent(new CustomEvent('dpgl-motion-toggle', { detail: { enabled } }));
             if (enabled) start(); else teardown();
@@ -313,10 +403,10 @@ if ('serviceWorker' in navigator) {
     } else {
         start();
     }
-})();
+})(); } catch (e) { if (window.console) console.warn("dpgl init failed", e); }
 
 // Idle screensaver: dims screen and floats DPGL77 emblem while smoothly changing its size
-(function initIdleScreensaver() {
+try { (function initIdleScreensaver() {
     const IDLE_MS = 90 * 1000; // 90 seconds of inactivity
     const BASE_H = 180;        // base emblem height (px)
     const ASPECT = 656 / 894;  // shield aspect ratio
@@ -410,27 +500,46 @@ if ('serviceWorker' in navigator) {
         resetTimer();
     }
 
+    // Idle = no page-level input for IDLE_MS. Timestamp + 1 s check instead of one long setTimeout:
+    // mobile browsers delay/freeze long timers in the background.
+    let lastActivity = Date.now();
+    let lastActiveEl = null;
+
     function resetTimer() {
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(startSaver, IDLE_MS);
+        lastActivity = Date.now();
     }
 
-    ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'pointerdown'].forEach(evt => {
+    function checkIdle() {
+        // Touches inside a cross-origin iframe (the feeds) never reach this page, but focus moves into the iframe:
+        // count that as activity once, then the normal 90 s countdown continues (never blocks forever).
+        const ae = document.activeElement;
+        if (ae && ae.tagName === 'IFRAME' && ae !== lastActiveEl) {
+            lastActiveEl = ae;
+            lastActivity = Date.now();
+        } else if (!ae || ae.tagName !== 'IFRAME') {
+            lastActiveEl = null;
+        }
+        if (!active && !document.hidden && Date.now() - lastActivity >= IDLE_MS) startSaver();
+    }
+
+    ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove'].forEach(evt => {
         window.addEventListener(evt, stopSaver, { passive: true });
     });
+    // scroll of the page or of the tab rows (scroll does not bubble: capture)
+    window.addEventListener('scroll', resetTimer, { passive: true, capture: true });
+    // focus moving into an iframe fires window blur
+    window.addEventListener('blur', () => { window.setTimeout(checkIdle, 0); });
+    window.addEventListener('pageshow', stopSaver);
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            clearTimeout(idleTimer);
-        } else {
-            stopSaver();
-        }
+        if (!document.hidden) stopSaver();
     });
 
     resetTimer();
-})();
+    idleTimer = window.setInterval(checkIdle, 1000);
+})(); } catch (e) { if (window.console) console.warn("dpgl init failed", e); }
 
 // Animated motto: letter ignition, muzzle flashes, spark bursts (28.11.2026)
-(function initMotto() {
+try { (function initMotto() {
     const h1 = document.querySelector('header.top h1.motto') || document.querySelector('header.top h1');
     if (!h1) return;
 
@@ -438,10 +547,23 @@ if ('serviceWorker' in navigator) {
     h1.classList.add('motto');
     if (!h1.getAttribute('aria-label')) h1.setAttribute('aria-label', MOTTO);
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Reduced motion: the OS asks for it (iOS "Reduce Motion", Android "Remove animations"/battery saver).
+    // Then no flashes/shake/sparks: only a calm static gradient with a soft glow (CSS .motto-calm).
+    // Visitors can force the full animation once with ?motion=full (remembered).
+    let osReduce = false;
+    try { osReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    try {
+        const q = new URLSearchParams(window.location.search).get('motion');
+        if (q === 'full') dpglStore.set('dpgl-motion', 'full');
+        else if (q === 'auto') dpglStore.set('dpgl-motion', 'auto');
+    } catch (e) {}
+    const motionPref = dpglStore.get('dpgl-motion');
+    const forceFull = motionPref === 'full';
+    if (forceFull) document.documentElement.classList.add('dpgl-motion-full');
+    const reduceMotion = osReduce && !forceFull;
     h1.classList.add('motto-ready');
     if (reduceMotion) {
-        h1.classList.add('motto-static', 'is-settled');
+        h1.classList.add('motto-static', 'motto-calm', 'is-settled');
         return;
     }
 
@@ -449,7 +571,7 @@ if ('serviceWorker' in navigator) {
     const BURST_COLORS = ['#ff7a2a', '#e85d2a', '#c41e12', '#ff9a3a', '#c69b4b', '#8b1a14'];
     const DEBRIS_COLORS = ['#c69b4b', '#a32a1c', '#e07a3d', '#8b1a14', '#f3d78a'];
 
-    let userPaused = localStorage.getItem('dpgl-float-buttons') === 'off';
+    let userPaused = dpglStore.get('dpgl-float-buttons') === 'off';
     let letters = [];
     let words = [];
     let canvas = null;
@@ -611,7 +733,9 @@ if ('serviceWorker' in navigator) {
             rafId = null;
             return;
         }
-        const dt = Math.min(0.05, (now - lastTime) / 1000 || 0.016);
+        // rAF timestamp can be slightly BEFORE performance.now() taken at start: negative dt used to give a negative
+        // gradient radius -> exception -> loop never re-armed (no sparks on phones)
+        const dt = Math.max(0, Math.min(0.05, (now - lastTime) / 1000 || 0.016));
         lastTime = now;
 
         for (let i = particles.length - 1; i >= 0; i--) {
@@ -631,7 +755,7 @@ if ('serviceWorker' in navigator) {
             if (f.a <= 0) flashes.splice(i, 1);
         }
 
-        draw();
+        try { draw(); } catch (e) { particles.length = 0; flashes.length = 0; }
 
         if (particles.length || flashes.length) {
             rafId = requestAnimationFrame(step);
@@ -645,14 +769,15 @@ if ('serviceWorker' in navigator) {
         if (!ctx) return;
         ctx.clearRect(0, 0, cssW, cssH);
         for (const f of flashes) {
-            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+            const fr = Math.max(0.5, f.r);
+            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, fr);
             g.addColorStop(0, `rgba(255, 248, 224, ${0.95 * f.a})`);
             g.addColorStop(0.35, `rgba(255, 210, 122, ${0.55 * f.a})`);
             g.addColorStop(0.7, `rgba(255, 122, 42, ${0.28 * f.a})`);
             g.addColorStop(1, 'rgba(196, 30, 18, 0)');
             ctx.fillStyle = g;
             ctx.beginPath();
-            ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+            ctx.arc(f.x, f.y, fr, 0, Math.PI * 2);
             ctx.fill();
         }
         for (const p of particles) {
@@ -677,7 +802,7 @@ if ('serviceWorker' in navigator) {
     function schedulePulse() {
         window.clearTimeout(pulseTimer);
         if (!introDone || isHeld()) return;
-        const wait = 8000 + Math.random() * 4000;
+        const wait = isMobile() ? 5000 + Math.random() * 3000 : 8000 + Math.random() * 4000;
         pulseTimer = window.setTimeout(runPulse, wait);
     }
 
@@ -774,7 +899,23 @@ if ('serviceWorker' in navigator) {
         onPauseChange();
     });
     document.addEventListener('dpgl-screensaver', onPauseChange);
-    document.addEventListener('visibilitychange', onPauseChange);
+    let hiddenAt = 0;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) hiddenAt = Date.now();
+        onPauseChange();
+        // coming back to the phone after a while: replay a pulse so the motto visibly "wakes up"
+        if (!document.hidden && introDone && hiddenAt && Date.now() - hiddenAt > 15000) {
+            hiddenAt = 0;
+            window.setTimeout(runPulse, 500);
+        }
+    });
+    // tap / click on the motto fires a burst (touch screens have no hover)
+    let lastTap = 0;
+    h1.addEventListener('pointerup', () => {
+        if (!introDone || isHeld() || Date.now() - lastTap < 1200) return;
+        lastTap = Date.now();
+        runPulse();
+    });
 
     if (!userPaused) playIntro();
     else {
@@ -787,4 +928,4 @@ if ('serviceWorker' in navigator) {
         get paused() { return isHeld(); },
         get particleCount() { return particles.length; }
     };
-})();
+})(); } catch (e) { if (window.console) console.warn("dpgl init failed", e); }
