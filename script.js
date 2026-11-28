@@ -51,14 +51,11 @@ function retryIframe(iframe) {
 }
 
 function bustIframe(iframe) {
-    try {
-        const url = new URL(iframe.src);
-        url.searchParams.set('t', Date.now());
-        iframe.src = url.toString();
-    } catch (e) {
-        const clean = iframe.src.replace(/[&?]t=\d+/, '');
-        iframe.src = clean + (clean.includes('?') ? '&' : '?') + 't=' + Date.now();
-    }
+    // Reload without extra URL params: Inoreader shows unknown params (e.g. t=timestamp) in the feed title.
+    const clean = (iframe.dataset.src || iframe.src || '').replace(/[&?]t=\d+/, '');
+    if (!clean) return;
+    iframe.src = 'about:blank';
+    setTimeout(() => { iframe.src = clean; }, 60);
 }
 
 function renderCountdown(sec) {
